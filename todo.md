@@ -2,7 +2,7 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
-Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar.
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG, Export PNG, and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar. Implemented nearest-point hover tooltips in GraphCanvas showing time and series, and stop name when using index-based distances. Updated FileDropComponent to display file types (Train line, Topology) alongside file names.
 
 ## 1. Requirements and Scope
 - Clarify units and conventions:
@@ -123,16 +123,18 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
 - File input & editing UX:
   - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓
   - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓
-  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□ (errors list shows file and line; file names shown in loader; file "types" still pending)
+  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓
 - Graph UX:
-  - Tooltips on hover showing stop, time, line/run name. ✓/□
-  - Keyboard navigation for panning/zooming; focus management. □ (follow-up: map +/- for zoom, arrow keys for pan; ensure focusable region)
+  - Tooltips on hover showing stop, time, line/run name. ✓
+    - Implemented nearest-point tooltip in GraphCanvas with stop name when using index-based distances; for real distances, tooltip shows time and series id. Persisting nothing; purely UI. ✓
+  - Keyboard navigation for panning/zooming; focus management. ✓
+    - Implemented keyboard controls on GraphCanvas: focusable host (tabindex=0), aria-keyshortcuts, and keydown handler using host bindings (no HostListener). '+'/'=' zoom in, '-' zoom out, ArrowUp/ArrowDown and PageUp/PageDown pan time window (Shift for larger steps). ✓
   - High-contrast color palette; ARIA roles/labels for interactive elements. ✓/□
 - Loading/export:
-  - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓/□
+  - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓
     - Export SVG. ✓
     - Export JSON (series). ✓
-    - Export PNG. □
+    - Export PNG. ✓
 
 ## 9. Performance and Robustness
 - Efficient parsing (chunked for big files if needed). ✓/□

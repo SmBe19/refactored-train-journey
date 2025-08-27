@@ -54,6 +54,7 @@ interface UiFile {
             <li class="file-drop__item">
               <div class="file-drop__file-head">
                 <span class="file-drop__name">{{ f.fileName }}</span>
+                <span class="file-drop__type" aria-hidden="true">Train line</span>
                 <button type="button" class="link" (click)="onRemoveTrain(i)" aria-label="Remove {{ f.fileName }}">Remove</button>
               </div>
               <textarea
@@ -99,6 +100,7 @@ interface UiFile {
       <div class="file-drop__topo">
         <div class="file-drop__file-head">
           <span class="file-drop__name">{{ topologyFile()?.fileName ?? 'pasted-topology.txt' }}</span>
+          <span class="file-drop__type" aria-hidden="true">Topology</span>
           <button type="button" class="link" (click)="onClearTopology()" aria-label="Clear topology">Clear</button>
         </div>
         <textarea
@@ -126,6 +128,7 @@ interface UiFile {
       .file-drop__item { margin-bottom: .5rem; }
       .file-drop__file-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; }
       .file-drop__name { font-weight: 600; }
+      .file-drop__type { font-size: .75rem; color: #1a237e; background: #e8eaf6; border: 1px solid #c5cae9; padding: 0 .25rem; border-radius: 3px; }
       .file-drop__single { margin-top: .25rem; }
       .file-drop__textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
       .drop-zone { margin-top: .5rem; border: 2px dashed #9e9e9e; border-radius: 6px; padding: .75rem; text-align: center; background: #fafafa; }

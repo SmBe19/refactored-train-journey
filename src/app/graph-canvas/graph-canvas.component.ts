@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ScheduleService } from '../services/schedule.service';
 import { FileParserService } from '../services/file-parser.service';
 import { SeriesVisibilityService } from '../services/series-visibility.service';
@@ -13,6 +13,9 @@ import { TimeWindowService } from '../services/time-window.service';
     class: 'graph-canvas',
     role: 'img',
     'aria-label': 'Train time-distance graph',
+    tabindex: '0',
+    'aria-keyshortcuts': '+, -, ArrowUp, ArrowDown, PageUp, PageDown',
+    '(keydown)': 'onKeydown($event)'
   },
   template: `
     <svg
@@ -23,6 +26,8 @@ import { TimeWindowService } from '../services/time-window.service';
       class="graph"
       aria-labelledby="graphTitle"
       role="group"
+      (mousemove)="onPointerMove($event)"
+      (mouseleave)="onPointerLeave()"
     >
       <title id="graphTitle">Time-Distance Graph</title>
 
@@ -107,6 +112,16 @@ import { TimeWindowService } from '../services/time-window.service';
           stroke-width="1"
         />
       }
+
+      <!-- Hover tooltip -->
+      @if (hoverActive()) {
+        <g class="tooltip" [attr.transform]="'translate(' + hoverX() + ',' + hoverY() + ')'">
+          <circle r="3" fill="#000"/>
+          <rect x="6" y="-22" rx="3" ry="3" width="160" height="40" fill="rgba(255,255,255,0.9)" stroke="#999"/>
+          <text x="12" y="-6" font-size="10" fill="#111">{{ hoverTextLine1() }}</text>
+          <text x="12" y="8" font-size="10" fill="#444">{{ hoverTextLine2() }}</text>
+        </g>
+      }
     </svg>
   `,
   styles: [
@@ -154,6 +169,108 @@ export class GraphCanvasComponent {
   protected readonly topoIndices = computed(() => Array.from({ length: this.topoCount() }, (_, i) => i));
 
   protected readonly topoLabels = computed(() => this.topoStops().map((name, index) => ({ index, name })));
+
+  // Hover state
+  protected readonly hoverActive = signal(false);
+  protected readonly hoverX = signal(0);
+  protected readonly hoverY = signal(0);
+  protected readonly hoverTextLine1 = signal('');
+  protected readonly hoverTextLine2 = signal('');
+
+  onPointerMove(ev: MouseEvent): void {
+    const svg = ev.currentTarget as SVGSVGElement | null;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const px = ev.clientX - rect.left;
+    const py = ev.clientY - rect.top;
+    // Note: we compute nearest point in screen space for simplicity
+
+    // Find nearest point across visible series (euclidean in screen space)
+    let best: { sx: number; sy: number; label1: string; label2: string } | null = null;
+    const sers = this.series();
+    for (const s of sers) {
+      for (const p of s.points) {
+        const sx = this.xForDistance(p.distance);
+        const sy = this.yForTime(p.time as unknown as number);
+        const dx = sx - px;
+        const dy = sy - py;
+        const dist2 = dx * dx + dy * dy;
+        if (!best || dist2 < (best as any).d2) {
+          const timeLabel = this.formatTimeLabel(p.time as unknown as number);
+          let stopLabel = '';
+          if (!this.hasStopDistances()) {
+            const idx = Math.round(p.distance);
+            const stops = this.topoStops();
+            if (idx >= 0 && idx < stops.length) stopLabel = stops[idx];
+          }
+          const l1 = stopLabel ? `${stopLabel} — ${timeLabel}` : `${timeLabel}`;
+          const l2 = s.id;
+          best = { sx, sy, label1: l1, label2: l2 } as any;
+          (best as any).d2 = dist2;
+        }
+      }
+    }
+
+    if (best) {
+      this.hoverActive.set(true);
+      this.hoverX.set(best.sx);
+      this.hoverY.set(best.sy);
+      this.hoverTextLine1.set(best.label1);
+      this.hoverTextLine2.set(best.label2);
+    } else {
+      this.hoverActive.set(false);
+    }
+  }
+
+  onPointerLeave(): void {
+    this.hoverActive.set(false);
+  }
+
+  onKeydown(ev: KeyboardEvent): void {
+    // Enable keyboard pan/zoom of the time window
+    const key = ev.key;
+    const ctrlOrMeta = ev.ctrlKey || ev.metaKey;
+    const shift = ev.shiftKey;
+
+    // Determine actions. We consider common keys without requiring modifiers.
+    // Prevent default scrolling for handled keys.
+    const panSmall = 60; // seconds
+    const panLarge = 300; // seconds
+
+    if (key === '+' || key === '=' || (key === 'Add' && ctrlOrMeta)) {
+      this.ensureWindow();
+      this.timeWindow.zoom(0.8); // zoom in (20% tighter)
+      ev.preventDefault();
+      return;
+    }
+    if (key === '-' || key === '_' || key === 'Subtract') {
+      this.ensureWindow();
+      this.timeWindow.zoom(1.25); // zoom out (25% wider)
+      ev.preventDefault();
+      return;
+    }
+    if (key === 'ArrowUp' || key === 'PageUp') {
+      this.ensureWindow();
+      this.timeWindow.pan(-(shift ? panLarge : panSmall));
+      ev.preventDefault();
+      return;
+    }
+    if (key === 'ArrowDown' || key === 'PageDown') {
+      this.ensureWindow();
+      this.timeWindow.pan(shift ? panLarge : panSmall);
+      ev.preventDefault();
+      return;
+    }
+  }
+
+  private ensureWindow(): void {
+    if (this.timeWindow.window()) return;
+    // If no selection is set, initialize using current auto-fit y-domain
+    const [min, max] = this.yDomain();
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      this.timeWindow.setWindow({ min, max });
+    }
+  }
 
   // Scales
   protected xForDistance = (d: number): number => {

@@ -14,6 +14,7 @@ import { TimeWindowService } from '../services/time-window.service';
   template: `
     <div class="toolbar__row">
       <button type="button" class="toolbar__btn" (click)="exportSvg()">Export SVG</button>
+      <button type="button" class="toolbar__btn" (click)="exportPng()">Export PNG</button>
       <button type="button" class="toolbar__btn" (click)="exportJson()">Export JSON</button>
       <span class="toolbar__spacer" aria-hidden="true"></span>
       <button type="button" class="toolbar__btn" (click)="fitToData()" title="Fit time range to data">Fit</button>
@@ -51,6 +52,61 @@ export class ToolbarComponent {
     const serialized = new XMLSerializer().serializeToString(svg);
     const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
     this.downloadBlob(blob, `train-graph-${this.timestamp()}.svg`);
+  }
+
+  exportPng(): void {
+    const el = document.querySelector('svg.graph');
+    if (!el) return;
+    const svg = el as SVGSVGElement;
+
+    // Determine size from viewBox or width/height attributes
+    const viewBox = svg.getAttribute('viewBox');
+    let width = Number(svg.getAttribute('width')) || 0;
+    let height = Number(svg.getAttribute('height')) || 0;
+    if (viewBox) {
+      const parts = viewBox.split(/\s+/).map(Number);
+      if (parts.length === 4) {
+        width = parts[2];
+        height = parts[3];
+      }
+    }
+    if (!(width > 0 && height > 0)) {
+      // fallback to bounding box
+      const bbox = svg.getBoundingClientRect();
+      width = Math.max(1, Math.floor(bbox.width));
+      height = Math.max(1, Math.floor(bbox.height));
+    }
+
+    // Serialize SVG
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const serialized = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Draw onto a canvas via an Image
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        // Clear with white background to avoid transparent PNG if desired
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) this.downloadBlob(blob, `train-graph-${this.timestamp()}.png`);
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      } catch {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   }
 
   exportJson(): void {
