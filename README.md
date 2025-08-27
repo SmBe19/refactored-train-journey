@@ -21,8 +21,8 @@ The frontmatter contains the following fields: `name`, `default_stop_time`, `per
 
 All durations (e.g. stop times and travel times) are in the format `HH:MM:SS` or `MM:SS`. Time of day (e.g. runs) are in the format `HH:MM:SS` or `HH:MM`.
 
-## Topography
-The topography (the list of stops which should be displayed in the graph) is specified in a single text file, containing the name of the stops, one per line.
+## Topology
+The topology (the list of stops which should be displayed in the graph) is specified in a single text file, containing the name of the stops, one per line.
 
 ## Usage
 Files can either be uploaded or directly pasted into the textareas. After uploading, the files can be edited in textareas and the page will automatically update. All the data is stored in the browser, so it is available after closing the browser.

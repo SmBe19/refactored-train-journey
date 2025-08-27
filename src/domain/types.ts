@@ -29,7 +29,7 @@ export interface TrainLineSpec {
   segments: TrainLineSegment[];
 }
 
-export interface Topography {
+export interface Topology {
   stops: StopId[];
 }
 

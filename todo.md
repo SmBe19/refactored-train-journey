@@ -24,7 +24,7 @@ This document enumerates the tasks required to implement the Angular application
   - Time formats:
     - Durations: `HH:MM:SS` or `MM:SS`.
     - Time of day (runs): `HH:MM:SS` or `HH:MM`. ✓
-- Topography file (text):
+- Topology file (text):
   - One stop name per line; blank lines ignored; comments starting with `#` ignored. ✓
   - Validation:
     - No duplicates. ✓
@@ -36,7 +36,7 @@ This document enumerates the tasks required to implement the Angular application
   - `StopId = string`. ✓
   - `TrainLineMeta { name: string; defaultStopTime: TimeSeconds; period: TimeSeconds; runs: TimeOfDay[]; stopLocation?: Record<StopId, number>; extraStopTimes: Record<StopId, TimeSeconds>; }` ✓
   - `TrainLineSpec { meta: TrainLineMeta; segments: { stop: StopId; travelToNext?: TimeSeconds; }[] }` ✓
-  - `Topography { stops: StopId[] }` ✓
+  - `Topology { stops: StopId[] }` ✓
   - `RunInstance { lineName: string; runStart: number; schedule: StopSchedulePoint[] }` ✓
   - `StopSchedulePoint { stop: StopId; arrival: number; departure: number }` ✓
   - `GraphSeries { id: string; color: string; points: { distance: number; time: number }[] }` ✓
@@ -50,9 +50,9 @@ This document enumerates the tasks required to implement the Angular application
     - Durations: accept `HH:MM:SS` and `MM:SS`; convert to seconds. ✓ (src/domain/time.ts: parseDuration)
     - Time of day (runs): accept `HH:MM:SS` and `HH:MM`; convert to seconds since baseline. ✓ (src/domain/time.ts: parseTimeOfDay)
   - Build `TrainLineSpec`; collect `ParseError[]` on issues. ✓ (src/domain/train-line.ts)
-- Implement topography parser (line-by-line). ✓ (src/domain/topography.ts)
+- Implement topology parser (line-by-line). ✓ (src/domain/topology.ts)
 - Add cross-file validation:
-  - Topography stops must be subset of union of stops across all lines. ✓ (validated in FileParserService.crossFileErrors)
+  - Topology stops must be subset of union of stops across all lines. ✓ (validated in FileParserService.crossFileErrors)
   - Warn (non-fatal) for unused extra_stop_times keys. ✓
     - Implemented as warnings when extra_stop_times entries are zero seconds (redundant, no effect). Exposed via FileParserService.extraStopTimesWarnings and included in allErrors list. ✓
 
@@ -67,40 +67,40 @@ This document enumerates the tasks required to implement the Angular application
   - Empty extra_stop_times. ✓
   - Overlapping runs (allowed). ✓
   - Large periods; wrap across midnight not required if using absolute seconds timeline. ✓
-- Output `RunInstance` and derive `GraphSeries` points filtered by topography stops. ✓
+- Output `RunInstance` and derive `GraphSeries` points filtered by topology stops. ✓
 
 ## 6. Graph Computation and Rendering
 - Axis definitions:
-  - X-axis: distance. Use `stop_location` distance when provided; otherwise use evenly spaced indices based on topography order. ✓
+  - X-axis: distance. Use `stop_location` distance when provided; otherwise use evenly spaced indices based on topology order. ✓
   - Y-axis: time (seconds). ✓
 - Series generation:
-  - For each run, create polyline segments connecting (distance, time) for each visited stop that exists in topography. ✓
-  - If a line has stops not in topography, skip those points. ✓
+  - For each run, create polyline segments connecting (distance, time) for each visited stop that exists in topology. ✓
+  - If a line has stops not in topology, skip those points. ✓
 - Rendering:
   - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓/□
   - Implement pan/zoom (optional v1: vertical scroll, time window selection). ✓/□
-  - Draw station grid lines at each topography stop; label axes. ✓/□
+  - Draw station grid lines at each topology stop; label axes. ✓/□
   - Color-code lines/runs; legend. ✓/□
 
 ## 7. Angular Application Architecture
 - Routing (lazy-loaded feature):
   - `routes: [{ path: '', loadComponent: () => import('./app/graph-page/graph-page.component') }]` ✓
 - Services (providedIn: 'root') using `inject()`:
-  - `FileParserService` for parsing line/topography files. ✓ (src/app/services/file-parser.service.ts)
-    - Use domain parsers: parseTrainLine (src/domain/train-line.ts) and parseTopography (src/domain/topography.ts). ✓
+  - `FileParserService` for parsing line/topology files. ✓ (src/app/services/file-parser.service.ts)
+    - Use domain parsers: parseTrainLine (src/domain/train-line.ts) and parseTopology (src/domain/topology.ts). ✓
     - Return signals or Results with aggregated ParseError[] per file. ✓
   - `ScheduleService` for computing schedules and series. ✓
   - `ColorService` to assign colors per line/run. ✓
 - State management (signals):
-  - Signals for: loaded train lines, topography, validation errors, derived graph series, selected time window. ✓/□
+  - Signals for: loaded train lines, topology, validation errors, derived graph series, selected time window. ✓/□
   - Use `computed()` for derived series from raw inputs. ✓
   - Never use `mutate`; use `set`/`update`. ✓
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
   - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. (Shell created; placeholder content) ✓
-  - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topography file. ✓
-    - Implement file picker (multiple train lines + single topography) and wire to FileParserService. ✓
+  - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topology file. ✓
+    - Implement file picker (multiple train lines + single topology) and wire to FileParserService. ✓
     - Display selected file names. ✓
-    - Drag-and-drop area. □
+    - Drag-and-drop area. ✓
     - Pasting raw text into textareas. □
   - `ErrorListComponent`: shows parsing/validation errors. ✓ (implemented and integrated into GraphPage)
   - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓/□
@@ -142,7 +142,7 @@ This document enumerates the tasks required to implement the Angular application
 - Unit tests:
   - Parsers (valid and invalid cases). ✓/□
   - Scheduling engine (edge cases: zero times, extra stop times, period wait). ✓/□
-  - Graph series generation mapping to topography indices. ✓/□
+  - Graph series generation mapping to topology indices. ✓/□
 - Component tests:
   - Signal-driven derivations and rendering conditions. ✓/□
 - E2E tests:
@@ -154,7 +154,7 @@ This document enumerates the tasks required to implement the Angular application
 - NPM scripts for build, serve, test, e2e, lint. ✓/□
 
 ## 13. Sample Data and Docs
-- Create sample train line files (2+ lines) and a sample topography file for testing/demos. ✓/□
+- Create sample train line files (2+ lines) and a sample topology file for testing/demos. ✓/□
 - Update README with usage instructions and file format examples. ✓/□
 
 ## 14. Delivery Checklist

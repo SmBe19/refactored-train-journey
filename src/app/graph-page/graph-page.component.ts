@@ -13,7 +13,7 @@ import { FileDropComponent } from '../file-drop/file-drop.component';
   template: `
     <section class="graph-page__container" aria-labelledby="graphPageTitle">
       <h2 id="graphPageTitle" class="graph-page__title">Train Graph Viewer</h2>
-      <p class="graph-page__subtitle">Load train lines and a topography to visualize schedules.</p>
+      <p class="graph-page__subtitle">Load train lines and a topology to visualize schedules.</p>
 
       <section class="graph-page__panel" aria-labelledby="loadTitle">
         <h3 id="loadTitle" class="graph-page__panel-title">Load files</h3>

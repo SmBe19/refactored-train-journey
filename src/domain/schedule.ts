@@ -1,4 +1,4 @@
-import { GraphPoint, GraphSeries, RunInstance, TimeSeconds, Topography, TrainLineSpec, asTimeSeconds } from './types';
+import { GraphPoint, GraphSeries, RunInstance, TimeSeconds, Topology, TrainLineSpec, asTimeSeconds } from './types';
 
 /**
  * Compute run instances (arrival/departure per stop) for a TrainLineSpec.
@@ -36,18 +36,18 @@ export function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
 }
 
 /**
- * Build graph series points for runs filtered by topography stops.
- * X-axis: distance (from stopLocation when provided; else evenly spaced index by topography order).
+ * Build graph series points for runs filtered by topology stops.
+ * X-axis: distance (from stopLocation when provided; else evenly spaced index by topology order).
  * Y-axis: time (seconds).
  */
 export function buildGraphSeriesForRuns(
   runs: RunInstance[],
   spec: TrainLineSpec,
-  topography: Topography,
+  topology: Topology,
   options?: { colorForSeries?: (seriesIndex: number, run: RunInstance) => string }
 ): GraphSeries[] {
   const topoIndex = new Map<string, number>();
-  topography.stops.forEach((s, i) => topoIndex.set(s, i));
+  topology.stops.forEach((s, i) => topoIndex.set(s, i));
 
   const useStopLocation = !!spec.meta.stopLocation && Object.keys(spec.meta.stopLocation!).length > 0;
 
@@ -57,7 +57,7 @@ export function buildGraphSeriesForRuns(
     const points: GraphPoint[] = [];
 
     run.schedule.forEach((p) => {
-      if (!topoIndex.has(p.stop)) return; // skip stops not in topography
+      if (!topoIndex.has(p.stop)) return; // skip stops not in topology
       const distance = useStopLocation
         ? (spec.meta.stopLocation![p.stop] ?? topoIndex.get(p.stop)!)
         : topoIndex.get(p.stop)!;

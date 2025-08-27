@@ -4,7 +4,7 @@ import {
   GraphSeries,
   RunInstance,
   TimeSeconds,
-  Topography,
+  Topology,
   TrainLineSpec,
   asTimeSeconds,
 } from '../../domain/types';
@@ -25,9 +25,9 @@ export class ScheduleService {
     return out;
   });
 
-  // Derived: graph series filtered by current topography (if valid)
+  // Derived: graph series filtered by current topology (if valid)
   readonly graphSeries = computed<GraphSeries[]>(() => {
-    const topoRes = this.files.parsedTopography();
+    const topoRes = this.files.parsedTopology();
     if (!topoRes || !topoRes.ok) return [];
     const topo = topoRes.value;
 
@@ -86,7 +86,7 @@ function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
   return runs;
 }
 
-function computeGraphPoints(spec: TrainLineSpec, topo: Topography, run: RunInstance): GraphPoint[] {
+function computeGraphPoints(spec: TrainLineSpec, topo: Topology, run: RunInstance): GraphPoint[] {
   const topoIndex = new Map<string, number>();
   topo.stops.forEach((s, i) => topoIndex.set(s, i));
 
@@ -103,7 +103,7 @@ function computeGraphPoints(spec: TrainLineSpec, topo: Topography, run: RunInsta
 
   const pts: GraphPoint[] = [];
   for (const p of run.schedule) {
-    if (!topoIndex.has(p.stop)) continue; // only include stops present in topography
+    if (!topoIndex.has(p.stop)) continue; // only include stops present in topology
     const dist = distanceFor(p.stop);
     if (dist === undefined) continue;
     // Use arrival time for plotting; could be tweaked later to include dwell segments

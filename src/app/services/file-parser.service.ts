@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { Result, ParseError, Topography, TrainLineSpec } from '../../domain/types';
-import { parseTopography } from '../../domain/topography';
+import { Result, ParseError, Topology, TrainLineSpec } from '../../domain/types';
+import { parseTopology } from '../../domain/topology';
 import { parseTrainLine } from '../../domain/train-line';
 
 export interface ParsedTrainLine {
@@ -10,14 +10,14 @@ export interface ParsedTrainLine {
 
 export interface FileInputs {
   trainLineFiles: { fileName: string; text: string }[];
-  topographyFile?: { fileName: string; text: string };
+  topologyFile?: { fileName: string; text: string };
 }
 
 @Injectable({ providedIn: 'root' })
 export class FileParserService {
   // Raw inputs state
   private readonly trainLineTexts = signal<{ fileName: string; text: string }[]>([]);
-  private readonly topographyText = signal<{ fileName: string; text: string } | null>(null);
+  private readonly topologyText = signal<{ fileName: string; text: string } | null>(null);
 
   // Parsed outputs
   readonly parsedTrainLines = computed<ParsedTrainLine[]>(() => {
@@ -42,22 +42,22 @@ export class FileParserService {
     return errs;
   });
 
-  readonly parsedTopography = computed<Result<Topography, ParseError[]> | null>(() => {
-    const top = this.topographyText();
+  readonly parsedTopology = computed<Result<Topology, ParseError[]> | null>(() => {
+    const top = this.topologyText();
     if (!top) return null;
-    return parseTopography(top.text, top.fileName);
+    return parseTopology(top.text, top.fileName);
   });
 
-  readonly topographyErrors = computed<ParseError[]>(() => {
-    const res = this.parsedTopography();
+  readonly topologyErrors = computed<ParseError[]>(() => {
+    const res = this.parsedTopology();
     if (!res) return [];
     return res.ok ? [] : res.error;
   });
 
-  // Cross-file validation: topography must be subset of union of stops across all lines.
+  // Cross-file validation: topology must be subset of union of stops across all lines.
   readonly crossFileErrors = computed<ParseError[]>(() => {
     const errs: ParseError[] = [];
-    const topoRes = this.parsedTopography();
+    const topoRes = this.parsedTopology();
     if (!topoRes || !topoRes.ok) return errs; // if topo invalid or absent, skip cross-check for now
 
     const topoStops = new Set(topoRes.value.stops);
@@ -69,11 +69,11 @@ export class FileParserService {
 
     for (const stop of topoStops) {
       if (!unionStops.has(stop)) {
-        // Attach the topography file name if available
-        const top = this.topographyText();
+        // Attach the topology file name if available
+        const top = this.topologyText();
         errs.push({
-          file: top?.fileName ?? 'topography.txt',
-          message: `Topography stop "${stop}" does not exist in any loaded train line`,
+          file: top?.fileName ?? 'topology.txt',
+          message: `Topology stop "${stop}" does not exist in any loaded train line`,
         });
       }
     }
@@ -101,7 +101,7 @@ export class FileParserService {
 
   readonly allErrors = computed<ParseError[]>(() => [
     ...this.trainLineErrors(),
-    ...this.topographyErrors(),
+    ...this.topologyErrors(),
     ...this.crossFileErrors(),
     ...this.extraStopTimesWarnings(),
   ]);
@@ -112,12 +112,12 @@ export class FileParserService {
     this.trainLineTexts.set([...files]);
   }
 
-  setTopographyFile(file: { fileName: string; text: string } | null): void {
-    this.topographyText.set(file);
+  setTopologyFile(file: { fileName: string; text: string } | null): void {
+    this.topologyText.set(file);
   }
 
   setInputs(inputs: FileInputs): void {
     this.setTrainLineFiles(inputs.trainLineFiles);
-    this.setTopographyFile(inputs.topographyFile ?? null);
+    this.setTopologyFile(inputs.topologyFile ?? null);
   }
 }

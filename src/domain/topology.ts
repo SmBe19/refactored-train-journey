@@ -1,13 +1,13 @@
-import { Topography, Result, ok, err, ParseError } from './types';
+import { Topology, Result, ok, err, ParseError } from './types';
 
 /**
- * Parse a topography file content (one stop name per non-empty, non-comment line).
+ * Parse a topology file content (one stop name per non-empty, non-comment line).
  * - Lines starting with '#' (after optional leading whitespace) are comments and ignored.
  * - Blank/whitespace-only lines are ignored.
  * - Duplicate stop names are not allowed; duplicates produce errors with line numbers.
- * - Returns Result<Topography, ParseError[]>.
+ * - Returns Result<Topology, ParseError[]>.
  */
-export function parseTopography(text: string, fileName: string = 'topography.txt'): Result<Topography, ParseError[]> {
+export function parseTopology(text: string, fileName: string = 'topology.txt'): Result<Topology, ParseError[]> {
   const lines = text.split(/\r?\n/);
   const stops: string[] = [];
   const seen = new Map<string, number>(); // stop -> first occurrence line
@@ -22,7 +22,7 @@ export function parseTopography(text: string, fileName: string = 'topography.txt
     const stop = trimmed;
     const firstIdx = seen.get(stop);
     if (firstIdx !== undefined) {
-      errors.push({ file: fileName, line: lineNo, message: `Duplicate stop name \"${stop}\" (first seen at line ${firstIdx})` });
+      errors.push({ file: fileName, line: lineNo, message: `Duplicate stop name "${stop}" (first seen at line ${firstIdx})` });
       return;
     }
     seen.set(stop, lineNo);
@@ -30,7 +30,7 @@ export function parseTopography(text: string, fileName: string = 'topography.txt
   });
 
   if (stops.length === 0) {
-    errors.push({ file: fileName, message: 'Topography contains no stops' });
+    errors.push({ file: fileName, message: 'Topology contains no stops' });
   }
 
   if (errors.length > 0) {
