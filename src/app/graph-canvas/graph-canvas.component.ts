@@ -3,7 +3,7 @@ import { ScheduleService } from '../services/schedule.service';
 import { FileParserService } from '../services/file-parser.service';
 import { SeriesVisibilityService } from '../services/series-visibility.service';
 import { GraphSeries } from '../../domain/types';
-import { TimeWindowService } from '../services/time-window.service';
+import { TimeWindow, TimeWindowService } from '../services/time-window.service';
 
 @Component({
   selector: 'app-graph-canvas',
@@ -15,7 +15,10 @@ import { TimeWindowService } from '../services/time-window.service';
     'aria-label': 'Train time-distance graph',
     tabindex: '0',
     'aria-keyshortcuts': '+, -, ArrowUp, ArrowDown, PageUp, PageDown',
-    '(keydown)': 'onKeydown($event)'
+    '(keydown)': 'onKeydown($event)',
+    '(document:mousemove)': 'onDocumentMouseMove($event)',
+    '(document:mouseup)': 'onDocumentMouseUp()',
+    '[class.dragging]': 'dragging()'
   },
   template: `
     <svg
@@ -28,6 +31,8 @@ import { TimeWindowService } from '../services/time-window.service';
       role="group"
       (mousemove)="onPointerMove($event)"
       (mouseleave)="onPointerLeave()"
+      (mousedown)="onDragStart($event)"
+      [style.cursor]="dragging() ? 'grabbing' : 'grab'"
     >
       <title id="graphTitle">Time-Distance Graph</title>
 
@@ -157,6 +162,7 @@ import { TimeWindowService } from '../services/time-window.service';
   styles: [
     `
       :host { display: block; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+      :host.dragging { user-select: none; }
       .graph { display: block; width: 100%; height: auto; }
     `,
   ],
@@ -198,7 +204,14 @@ export class GraphCanvasComponent {
   protected readonly hoverTextLine1 = signal('');
   protected readonly hoverTextLine2 = signal('');
 
+  // Drag state
+  protected readonly dragging = signal(false);
+  private dragStartY = 0;
+  private dragStartWindow: TimeWindow | null = null;
+  private dragSvgEl: SVGSVGElement | null = null;
+
   onPointerMove(ev: MouseEvent): void {
+    if (this.dragging()) return; // suppress hover updates during drag
     const svg = ev.currentTarget as SVGSVGElement | null;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
@@ -247,7 +260,50 @@ export class GraphCanvasComponent {
   }
 
   onPointerLeave(): void {
+    if (!this.dragging()) this.hoverActive.set(false);
+  }
+
+  onDragStart(ev: MouseEvent): void {
+    // Start dragging to pan vertically (time axis)
+    const svg = ev.currentTarget as SVGSVGElement | null;
+    if (!svg) return;
+    this.ensureWindow();
+    const win = this.timeWindow.window();
+    // If still no window (no data?), do nothing
+    if (!win) return;
+    this.dragging.set(true);
+    this.dragStartY = ev.clientY;
+    this.dragStartWindow = { ...win } as TimeWindow;
+    this.dragSvgEl = svg;
+    // also hide hover to avoid flicker
     this.hoverActive.set(false);
+    // prevent default to avoid text selection
+    ev.preventDefault();
+  }
+
+  onDocumentMouseMove(ev: MouseEvent): void {
+    if (!this.dragging() || !this.dragStartWindow || !this.dragSvgEl) return;
+    const rect = this.dragSvgEl.getBoundingClientRect();
+    const scaleY = this.height / rect.height; // CSS px -> SVG units
+    const dyCss = ev.clientY - this.dragStartY;
+    const dySvg = dyCss * scaleY;
+    const h = this.height - this.margin.top - this.margin.bottom;
+    const range = this.dragStartWindow.max - this.dragStartWindow.min;
+    if (!(range > 0 && h > 0)) return;
+    // y increases downward => moving mouse down should increase time (pan down)
+    const deltaSeconds = dySvg * (range / h);
+    const next: TimeWindow = {
+      min: this.dragStartWindow.min + deltaSeconds,
+      max: this.dragStartWindow.max + deltaSeconds,
+    };
+    this.timeWindow.setWindow(next);
+  }
+
+  onDocumentMouseUp(): void {
+    if (!this.dragging()) return;
+    this.dragging.set(false);
+    this.dragStartWindow = null;
+    this.dragSvgEl = null;
   }
 
   onKeydown(ev: KeyboardEvent): void {
