@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ErrorListComponent } from '../error-list/error-list.component';
 import { FileDropComponent } from '../file-drop/file-drop.component';
 import { GraphCanvasComponent } from '../graph-canvas/graph-canvas.component';
+import { LegendComponent } from '../legend/legend.component';
 
 @Component({
   selector: 'app-graph-page',
   // Standalone by default (do not set standalone: true per guidelines)
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ErrorListComponent, FileDropComponent, GraphCanvasComponent],
+  imports: [ErrorListComponent, FileDropComponent, GraphCanvasComponent, LegendComponent],
   host: {
     class: 'graph-page',
   },
@@ -24,6 +25,11 @@ import { GraphCanvasComponent } from '../graph-canvas/graph-canvas.component';
       <section class="graph-page__panel" aria-labelledby="graphTitle">
         <h3 id="graphTitle" class="graph-page__panel-title">Graph</h3>
         <app-graph-canvas />
+      </section>
+
+      <section class="graph-page__panel" aria-labelledby="legendTitle">
+        <h3 id="legendTitle" class="graph-page__panel-title">Legend</h3>
+        <app-legend />
       </section>
 
       <section class="graph-page__panel" aria-labelledby="errorsTitle">

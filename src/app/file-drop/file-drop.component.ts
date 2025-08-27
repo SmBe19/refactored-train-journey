@@ -144,11 +144,44 @@ export class FileDropComponent {
   protected readonly dragActiveTrain = signal(false);
   protected readonly dragActiveTopo = signal(false);
 
+  private static readonly STORE_KEY = 'train-graph-viewer:v1';
+
+  constructor() {
+    // Hydrate from localStorage if present
+    try {
+      const raw = localStorage.getItem(FileDropComponent.STORE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { trainFiles?: UiFile[]; topologyFile?: UiFile | null };
+        if (Array.isArray(parsed.trainFiles)) {
+          // validate shape minimally
+          this.trainFiles.set(parsed.trainFiles.map((f) => ({ fileName: String((f as any).fileName), text: String((f as any).text) })));
+        }
+        if (parsed.topologyFile && typeof parsed.topologyFile.fileName === 'string' && typeof parsed.topologyFile.text === 'string') {
+          this.topologyFile.set({ fileName: parsed.topologyFile.fileName, text: parsed.topologyFile.text });
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+    // Push hydrated state to the service
+    this.updateService();
+  }
+
+  private persist(): void {
+    try {
+      const payload = JSON.stringify({ trainFiles: this.trainFiles(), topologyFile: this.topologyFile() });
+      localStorage.setItem(FileDropComponent.STORE_KEY, payload);
+    } catch {
+      // Swallow storage quota or serialization errors
+    }
+  }
+
   private updateService(): void {
     this.parser.setInputs({
       trainLineFiles: this.trainFiles().map((f) => ({ fileName: f.fileName, text: f.text })),
       topologyFile: this.topologyFile() ? { fileName: this.topologyFile()!.fileName, text: this.topologyFile()!.text } : undefined,
     });
+    this.persist();
   }
 
   async onTrainFilesChange(event: Event): Promise<void> {

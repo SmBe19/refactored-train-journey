@@ -2,7 +2,7 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
-Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided.
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series based on visibility.
 
 ## 1. Requirements and Scope
 - Clarify units and conventions:
@@ -81,7 +81,7 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
 - Rendering:
   - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓
   - Implement pan/zoom (optional v1: vertical scroll, time window selection). □
-  - Draw station grid lines at each topology stop; label axes. ✓/□
+  - Draw station grid lines at topology indices when no explicit stop distances are provided and label axes (x: stop names when index-based, y: time ticks). ✓
   - Color-code lines/runs; legend. □
 
 ## 7. Angular Application Architecture
@@ -106,7 +106,7 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
     - Pasting raw text into textareas. ✓
   - `ErrorListComponent`: shows parsing/validation errors. ✓ (implemented and integrated into GraphPage)
   - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓ (basic axes + series rendering; grid lines for topology indices when no distances)
-  - `LegendComponent`: color legend and toggles per line/run. □
+  - `LegendComponent`: color legend and toggles per line/run. ✓ (added LegendComponent and SeriesVisibilityService; GraphCanvas filters series by visibility)
   - `ToolbarComponent`: controls (zoom, time range, export). □
 - Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓/□
 - Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓/□
@@ -136,9 +136,11 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
 
 ## 10. Persistence
 - Required in-browser persistence (no server):
-  - Persist all user data locally so it's available after closing/reopening the browser: uploaded files and edited textarea contents. ✓/□
+  - Persist all user data locally so it's available after closing/reopening the browser: uploaded files and edited textarea contents. ✓
+    - Implemented via localStorage hydration/persist in FileDropComponent (key: train-graph-viewer:v1). ✓
   - Prefer IndexedDB for larger text blobs; fallback to localStorage if simplicity is acceptable for v1. ✓/□
-  - Also persist UI state (last selected time window, toggles, graph options). ✓/□
+    - v1 uses localStorage with try/catch; follow-up to migrate to IndexedDB for large files/quota resilience. □
+  - Also persist UI state (last selected time window, toggles, graph options). ✓/□ (series visibility toggles exist; persistence follow-up pending)
 
 ## 11. Testing Strategy
 - Unit tests:

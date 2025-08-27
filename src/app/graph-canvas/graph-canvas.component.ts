@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ScheduleService } from '../services/schedule.service';
 import { FileParserService } from '../services/file-parser.service';
+import { SeriesVisibilityService } from '../services/series-visibility.service';
 import { GraphSeries } from '../../domain/types';
 
 @Component({
@@ -28,6 +29,27 @@ import { GraphSeries } from '../../domain/types';
       <line [attr.x1]="margin.left" [attr.y1]="height - margin.bottom" [attr.x2]="width - margin.right" [attr.y2]="height - margin.bottom" stroke="#424242" stroke-width="1" />
       <line [attr.x1]="margin.left" [attr.y1]="margin.top" [attr.x2]="margin.left" [attr.y2]="height - margin.bottom" stroke="#424242" stroke-width="1" />
 
+      <!-- X axis label (bottom) -->
+      <text
+        [attr.x]="(margin.left + (width - margin.right)) / 2"
+        [attr.y]="height - 2"
+        text-anchor="middle"
+        fill="#424242"
+        font-size="10"
+        aria-hidden="true"
+      >Distance</text>
+
+      <!-- Y axis label (left, rotated) -->
+      <text
+        [attr.x]="- (margin.top + (height - margin.bottom)) / 2"
+        [attr.y]="12"
+        transform="rotate(-90)"
+        text-anchor="middle"
+        fill="#424242"
+        font-size="10"
+        aria-hidden="true"
+      >Time</text>
+
       <!-- Series polylines -->
       @for (s of series(); track s.id) {
         <polyline [attr.points]="pointsAttr(s)" [attr.stroke]="s.color" fill="none" stroke-width="1.5" />
@@ -45,6 +67,44 @@ import { GraphSeries } from '../../domain/types';
             stroke-width="1"
           />
         }
+        <!-- X-axis tick labels with stop names -->
+        @for (label of topoLabels(); track label.index) {
+          <text
+            [attr.x]="xForDistance(label.index)"
+            [attr.y]="height - margin.bottom + 12"
+            text-anchor="end"
+            fill="#616161"
+            font-size="9"
+            [attr.transform]="'rotate(-45, ' + xForDistance(label.index) + ', ' + (height - margin.bottom + 12) + ')'"
+          >{{ label.name }}</text>
+        }
+      }
+
+      <!-- Y-axis ticks and labels -->
+      @for (tick of yTicks(); track tick) {
+        <line
+          [attr.x1]="margin.left - 3"
+          [attr.y1]="yForTime(tick)"
+          [attr.x2]="margin.left"
+          [attr.y2]="yForTime(tick)"
+          stroke="#424242"
+          stroke-width="1"
+        />
+        <text
+          [attr.x]="margin.left - 6"
+          [attr.y]="yForTime(tick) + 3"
+          text-anchor="end"
+          fill="#616161"
+          font-size="9"
+        >{{ formatTimeLabel(tick) }}</text>
+        <line
+          [attr.x1]="margin.left"
+          [attr.y1]="yForTime(tick)"
+          [attr.x2]="width - margin.right"
+          [attr.y2]="yForTime(tick)"
+          stroke="#eeeeee"
+          stroke-width="1"
+        />
       }
     </svg>
   `,
@@ -58,18 +118,24 @@ import { GraphSeries } from '../../domain/types';
 export class GraphCanvasComponent {
   private readonly schedule = inject(ScheduleService);
   private readonly files = inject(FileParserService);
+  private readonly visibility = inject(SeriesVisibilityService);
 
   // Basic layout
   protected readonly width = 800;
   protected readonly height = 400;
-  protected readonly margin = { top: 10, right: 10, bottom: 20, left: 30 } as const;
+  protected readonly margin = { top: 10, right: 10, bottom: 60, left: 42 } as const;
 
   // Data sources
-  protected readonly series = computed<GraphSeries[]>(() => this.schedule.graphSeries());
+  protected readonly series = computed<GraphSeries[]>(() => this.schedule.graphSeries().filter(s => this.visibility.isVisible(s.id)));
 
   protected readonly topoCount = computed(() => {
     const tr = this.files.parsedTopology();
     return tr && tr.ok ? tr.value.stops.length : 0;
+  });
+
+  protected readonly topoStops = computed(() => {
+    const tr = this.files.parsedTopology();
+    return tr && tr.ok ? tr.value.stops : [];
   });
 
   protected readonly hasStopDistances = computed(() => {
@@ -84,6 +150,8 @@ export class GraphCanvasComponent {
   });
 
   protected readonly topoIndices = computed(() => Array.from({ length: this.topoCount() }, (_, i) => i));
+
+  protected readonly topoLabels = computed(() => this.topoStops().map((name, index) => ({ index, name })));
 
   // Scales
   protected xForDistance = (d: number): number => {
@@ -106,6 +174,29 @@ export class GraphCanvasComponent {
 
   protected pointsAttr(s: GraphSeries): string {
     return s.points.map((p) => `${this.xForDistance(p.distance)},${this.yForTime(p.time as unknown as number)}`).join(' ');
+  }
+
+  protected readonly yTicks = computed<number[]>(() => this.generateYTicks());
+
+  protected formatTimeLabel = (tSec: number): string => {
+    const total = Math.max(0, Math.floor(tSec));
+    const hh = Math.floor(total / 3600);
+    const mm = Math.floor((total % 3600) / 60);
+    const ss = total % 60;
+    if (hh >= 1) return `${pad2(hh)}:${pad2(mm)}`; // show HH:MM once hours present
+    return `${pad2(mm)}:${pad2(ss)}`; // otherwise MM:SS
+  };
+
+  private generateYTicks(): number[] {
+    const [min, max] = this.yDomain();
+    if (!(Number.isFinite(min) && Number.isFinite(max))) return [];
+    const count = 5;
+    if (max === min) return [min];
+    const step = niceStep((max - min) / count);
+    const start = Math.ceil(min / step) * step;
+    const ticks: number[] = [];
+    for (let v = start; v <= max; v += step) ticks.push(v);
+    return ticks;
   }
 
   private xDomain(): [number, number] {
@@ -136,4 +227,15 @@ export class GraphCanvasComponent {
     if (min === max) return [min - 1, max + 1];
     return [min, max];
   }
+}
+
+function pad2(n: number): string { return n < 10 ? `0${n}` : String(n); }
+
+function niceStep(raw: number): number {
+  // choose a 'nice' step from {1,2,5} * 10^k
+  const exp = Math.floor(Math.log10(raw));
+  const base = raw / Math.pow(10, exp);
+  let nice = 1;
+  if (base > 5) nice = 10; else if (base > 2) nice = 5; else if (base > 1) nice = 2; else nice = 1;
+  return nice * Math.pow(10, exp);
 }
