@@ -1,5 +1,6 @@
 import { ParseError, Result, TimeOfDaySeconds, TimeSeconds, TrainLineSegment, TrainLineSpec, TrainLineMeta, asTimeOfDaySeconds, asTimeSeconds, err, ok } from './types';
 import { parseDuration, parseTimeOfDay } from './time';
+import { parse as parseYaml } from 'yaml';
 
 /**
  * Parse a train line file consisting of YAML frontmatter and a body of alternating lines:
@@ -90,165 +91,93 @@ function countLines(s: string): number {
   return s.length === 0 ? 0 : s.split(/\r?\n/).length;
 }
 
-function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Result<TrainLineMeta, ParseError[]> {
-  interface TempMeta {
-    name?: string;
-    default_stop_time?: TimeSeconds;
-    period?: TimeSeconds;
-    runs?: TimeOfDaySeconds[];
-    extra_stop_times?: Record<string, TimeSeconds>;
-  }
-  const temp: TempMeta = {};
+function parseFrontmatter(yamlText: string, fileName: string, baseLine: number): Result<TrainLineMeta, ParseError[]> {
   const errors: ParseError[] = [];
 
-  const lines = yaml.split(/\r?\n/);
-  let i = 0;
-  function currentLine(): number { return baseLine + i; }
-
-  // Minimal YAML subset parser: supports key: value, arrays with '-', and nested maps via indentation
-  const ctxStack: { type: 'root' | 'map' | 'array'; key?: string; indent: number }[] = [{ type: 'root', indent: -1 }];
-  let currentMap: any = {};
-
-  while (i < lines.length) {
-    const raw = lines[i];
-    i++;
-    if (!raw || raw.trim().length === 0) continue;
-    const indent = raw.match(/^\s*/)?.[0].length ?? 0;
-    const line = raw.trim();
-    if (line.startsWith('#')) continue;
-
-    // Key: value or key: or - item
-    if (line.startsWith('- ')) {
-      // Array item for the last seen array key. We only expect arrays for "runs"
-      const valueStr = line.substring(2).trim();
-      if (!Array.isArray((currentMap as any).__runs)) {
-        (currentMap as any).__runs = [] as string[];
-      }
-      (currentMap as any).__runs.push(valueStr);
-      continue;
-    }
-
-    const kv = line.match(/^(\w[\w_]*):\s*(.*)$/);
-    if (!kv) {
-      errors.push({ file: fileName, line: currentLine(), message: `Invalid frontmatter line: ${raw}` });
-      continue;
-    }
-    const key = kv[1];
-    const value = kv[2];
-
-    // Handle maps: if value looks like { a: 1, b: 2 }
-    if (value.startsWith('{') && value.endsWith('}')) {
-      const map = parseInlineMap(value, fileName, currentLine());
-      if (key === 'extra_stop_times') {
-        temp.extra_stop_times = {};
-        for (const [k, v] of Object.entries(map)) {
-          const d = parseDuration(String(v));
-          if (!d.ok) {
-            errors.push({ file: fileName, line: currentLine(), message: `Invalid extra_stop_times for ${k}: ${d.error}` });
-          } else {
-            temp.extra_stop_times[k] = d.value;
-          }
-        }
-      } else {
-        // Unknown inline map key
-        // Store nothing; non-fatal
-      }
-      continue;
-    }
-
-    // If value is empty, expect indented block map for known keys
-    if (value === '') {
-      // Collect subsequent indented lines as a map until dedent
-      const block: string[] = [];
-      const blockIndent = (lines[i]?.match(/^\s*/)?.[0].length ?? 0);
-      while (i < lines.length) {
-        const r = lines[i];
-        const ind = r.match(/^\s*/)?.[0].length ?? 0;
-        if (r.trim().length === 0 || r.trim().startsWith('#')) { i++; continue; }
-        if (ind < blockIndent) break;
-        block.push(r.slice(blockIndent));
-        i++;
-      }
-      const blockMap = parseBlockMap(block, fileName, currentLine());
-      if (key === 'extra_stop_times') {
-        temp.extra_stop_times = {};
-        for (const [k, v] of Object.entries(blockMap)) {
-          const d = parseDuration(String(v));
-          if (!d.ok) {
-            errors.push({ file: fileName, message: `Invalid extra_stop_times for ${k}: ${d.error}` });
-          } else {
-            temp.extra_stop_times[k] = d.value;
-          }
-        }
-      } else if (key === 'runs') {
-        const arr: string[] = [];
-        for (const [k, v] of Object.entries(blockMap)) {
-          // Support "- HH:MM" style in blockMap: key will be '-' or 'itemX'
-          arr.push(`${k} ${v}`.trim());
-        }
-        (currentMap as any).__runs = arr.filter((s) => s.length > 0);
-      }
-      continue;
-    }
-
-    // Scalar values
-    switch (key) {
-      case 'name':
-        temp.name = value.replace(/^"|"$/g, '');
-        break;
-      case 'default_stop_time': {
-        const d = parseDuration(value);
-        if (!d.ok) errors.push({ file: fileName, line: currentLine(), message: `default_stop_time: ${d.error}` });
-        else temp.default_stop_time = d.value;
-        break;
-      }
-      case 'period': {
-        const d = parseDuration(value);
-        if (!d.ok) errors.push({ file: fileName, line: currentLine(), message: `period: ${d.error}` });
-        else temp.period = d.value;
-        break;
-      }
-      case 'runs': {
-        // Inline array not supported except via subsequent "-" lines; if provided as comma list, split
-        const items = value.replace(/^[\[\s]|[\]\s]$/g, '').split(/\s*,\s*/).filter(Boolean);
-        (currentMap as any).__runs = items;
-        break;
-      }
-      case 'extra_stop_times':
-        // Handled above for maps; if scalar appears, treat as error
-        errors.push({ file: fileName, line: currentLine(), message: `${key} must be a map` });
-        break;
-      default:
-        // ignore unknown keys (non-fatal)
-        break;
-    }
+  let data: unknown;
+  try {
+    data = parseYaml(yamlText);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return err([{ file: fileName, line: baseLine, message: `YAML parse error: ${msg}` }]);
   }
 
-  const runsRaw: string[] = (currentMap as any).__runs ?? [];
+  if (data == null || typeof data !== 'object' || Array.isArray(data)) {
+    return err([{ file: fileName, line: baseLine, message: 'Frontmatter must be a YAML map/object' }]);
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // name
+  const nameVal = obj['name'];
+  const name = typeof nameVal === 'string' ? nameVal : undefined;
+
+  // default_stop_time
+  const dstRaw = obj['default_stop_time'];
+  let defaultStopTime: TimeSeconds | undefined;
+  if (dstRaw != null) {
+    const d = parseDuration(String(dstRaw));
+    if (!d.ok) errors.push({ file: fileName, line: baseLine, message: `default_stop_time: ${d.error}` });
+    else defaultStopTime = d.value;
+  }
+
+  // period
+  const perRaw = obj['period'];
+  let period: TimeSeconds | undefined;
+  if (perRaw != null) {
+    const d = parseDuration(String(perRaw));
+    if (!d.ok) errors.push({ file: fileName, line: baseLine, message: `period: ${d.error}` });
+    else period = d.value;
+  }
+
+  // runs
+  const runsRaw = obj['runs'];
   const runs: TimeOfDaySeconds[] = [];
-  for (const r of runsRaw) {
-    const pr = parseTimeOfDay(r);
-    if (!pr.ok) errors.push({ file: fileName, message: `runs entry "${r}": ${pr.error}` });
-    else runs.push(pr.value);
+  if (Array.isArray(runsRaw)) {
+    for (const r of runsRaw) {
+      const pr = parseTimeOfDay(String(r));
+      if (!pr.ok) errors.push({ file: fileName, line: baseLine, message: `runs entry "${String(r)}": ${pr.error}` });
+      else runs.push(pr.value);
+    }
+  } else if (runsRaw != null) {
+    // Allow a comma-separated string as a convenience
+    const parts = String(runsRaw).split(/\s*,\s*/).filter(Boolean);
+    for (const r of parts) {
+      const pr = parseTimeOfDay(r);
+      if (!pr.ok) errors.push({ file: fileName, line: baseLine, message: `runs entry "${r}": ${pr.error}` });
+      else runs.push(pr.value);
+    }
   }
 
-  if (!temp.extra_stop_times) temp.extra_stop_times = {};
+  // extra_stop_times
+  const estRaw = obj['extra_stop_times'];
+  const extraStopTimes: Record<string, TimeSeconds> = {};
+  if (estRaw != null) {
+    if (typeof estRaw !== 'object' || estRaw == null || Array.isArray(estRaw)) {
+      errors.push({ file: fileName, line: baseLine, message: 'extra_stop_times must be a map' });
+    } else {
+      for (const [k, v] of Object.entries(estRaw as Record<string, unknown>)) {
+        const d = parseDuration(String(v));
+        if (!d.ok) errors.push({ file: fileName, line: baseLine, message: `Invalid extra_stop_times for ${k}: ${d.error}` });
+        else extraStopTimes[k] = d.value;
+      }
+    }
+  }
 
   if (errors.length > 0) return err(errors);
 
-  if (temp.name == null || temp.default_stop_time == null || temp.period == null) {
+  if (name == null || defaultStopTime == null || period == null) {
     errors.push({ file: fileName, message: 'Frontmatter must include name, default_stop_time, and period' });
     return err(errors);
   }
 
   const meta: TrainLineMeta = {
-    name: temp.name,
-    defaultStopTime: temp.default_stop_time,
-    period: temp.period,
+    name,
+    defaultStopTime,
+    period,
     runs,
-    extraStopTimes: temp.extra_stop_times,
+    extraStopTimes,
   };
-
   return ok(meta);
 }
 
