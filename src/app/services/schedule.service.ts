@@ -94,8 +94,12 @@ function computeGraphPoints(spec: TrainLineSpec, topo: Topology, run: RunInstanc
   for (const p of run.schedule) {
     if (!topoIndex.has(p.stop)) continue; // only include stops present in topology
     const dist = topoIndex.get(p.stop)!;
-    // Use arrival time for plotting; could be tweaked later to include dwell segments
+    // Add arrival point
     pts.push({ distance: dist, time: p.arrival });
+    // If there is dwell time at this stop, add a departure point at the same distance to create a vertical segment
+    if ((p.departure as unknown as number) !== (p.arrival as unknown as number)) {
+      pts.push({ distance: dist, time: p.departure });
+    }
   }
   return pts;
 }
