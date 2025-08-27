@@ -124,12 +124,16 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓
   - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓
   - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓
+  - Provide in-UI documentation and examples of the required file formats (Train line with YAML frontmatter and Topology), including minimal and full examples; link to README for details. □
+  - Remove the "pasted" prefix for manually created/pasted files in the UI; display the user-provided or default name without any prefix. □
+  - Resize/reflow the File UI (editor and messages) so files and the graph are visible simultaneously without scrolling (e.g., side-by-side layout or resizable panes). □
 - Graph UX:
   - Tooltips on hover showing stop, time, line/run name. ✓
     - Implemented nearest-point tooltip in GraphCanvas with stop name when using index-based distances; for real distances, tooltip shows time and series id. Persisting nothing; purely UI. ✓
   - Keyboard navigation for panning/zooming; focus management. ✓
     - Implemented keyboard controls on GraphCanvas: focusable host (tabindex=0), aria-keyshortcuts, and keydown handler using host bindings (no HostListener). '+'/'=' zoom in, '-' zoom out, ArrowUp/ArrowDown and PageUp/PageDown pan time window (Shift for larger steps). ✓
   - High-contrast color palette; ARIA roles/labels for interactive elements. ✓/□
+  - Y-axis orientation: ensure time increases going down (invert axis rendering and tick mapping accordingly). □
 - Loading/export:
   - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓
     - Export SVG. ✓
