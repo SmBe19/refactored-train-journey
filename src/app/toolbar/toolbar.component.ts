@@ -27,9 +27,21 @@ import { TimeWindowService } from '../services/time-window.service';
     `
       :host { display: block; margin: .25rem 0 .5rem; }
       .toolbar__row { display: flex; gap: .5rem; flex-wrap: wrap; }
-      .toolbar__btn { appearance: none; border: 1px solid #cfcfcf; background: #fafafa; padding: .4rem .6rem; border-radius: 4px; cursor: pointer; }
-      .toolbar__btn:hover { background: #f3f3f3; }
-      .toolbar__btn:active { background: #ececec; }
+      .toolbar__btn {
+        appearance: none;
+        border: 1px solid #0d47a1; /* darker for contrast */
+        background: #1976d2;      /* AA contrast on white */
+        color: #fff;
+        padding: .4rem .6rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .toolbar__btn:hover { background: #1565c0; }
+      .toolbar__btn:active { background: #0f5bb1; }
+      .toolbar__btn:focus-visible {
+        outline: 3px solid #ffab00; /* high-vis focus */
+        outline-offset: 2px;
+      }
     `,
   ],
 })

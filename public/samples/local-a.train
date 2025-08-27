@@ -1,0 +1,18 @@
+---
+name: Local A
+default_stop_time: 00:00:30
+period: 01:00:00
+runs:
+  - 06:00
+  - 06:30
+stop_location: { Central: 0, "East Side": 5, Meadow: 9, Hilltop: 12 }
+extra_stop_times:
+  Central: 00:00:30
+---
+Central
+02:00
+East Side
+03:30
+Meadow
+01:45
+Hilltop

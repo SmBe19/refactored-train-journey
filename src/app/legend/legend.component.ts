@@ -29,13 +29,14 @@ import { SeriesVisibilityService } from '../services/series-visibility.service';
   `,
   styles: [
     `
-      :host { display: block; border: 1px solid #e0e0e0; border-radius: 6px; padding: .5rem .75rem; }
-      .legend__empty { color: #555; }
+      :host { display: block; border: 1px solid #9e9e9e; border-radius: 6px; padding: .5rem .75rem; }
+      .legend__empty { color: #333; }
       .legend__list { margin: 0; padding: 0; list-style: none; display: grid; gap: .25rem .5rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
       .legend__item { }
-      .legend__label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
-      .legend__swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
-      .legend__text { font-size: .9rem; }
+      .legend__label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; border-radius: 4px; padding: .1rem .2rem; }
+      .legend__label:focus-within { outline: 3px solid #ffab00; outline-offset: 2px; }
+      .legend__swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid rgba(0,0,0,.45); }
+      .legend__text { font-size: .9rem; color: #111; }
     `,
   ],
 })

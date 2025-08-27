@@ -2,7 +2,7 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
-Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Ensured Y-axis orientation with time increasing downward. Added numeric X-axis ticks and vertical grid lines when real distances (stop_location) are provided. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG, Export PNG, and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar. Implemented nearest-point hover tooltips in GraphCanvas showing time and series, and stop name when using index-based distances. Updated FileDropComponent to display file types (Train line, Topology) alongside file names. Removed 'pasted-' prefix from UI file names (new and hydrated data) and defaulted topology name to 'topology.txt'. Added in-UI file format help with copyable minimal examples and README link in the Load files panel.
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Ensured Y-axis orientation with time increasing downward. Added numeric X-axis ticks and vertical grid lines when real distances (stop_location) are provided. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG, Export PNG, and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar. Implemented nearest-point hover tooltips in GraphCanvas showing time and series, and stop name when using index-based distances. Updated FileDropComponent to display file types (Train line, Topology) alongside file names. Removed 'pasted-' prefix from UI file names (new and hydrated data) and defaulted topology name to 'topology.txt'. Added in-UI file format help with copyable minimal examples and README link in the Load files panel. Added 'Load sample files' button in FileDrop to load public/samples dataset (Local A, Express B, Topology).
 
 ## 1. Requirements and Scope
 - Clarify units and conventions:
@@ -113,7 +113,8 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
     - Zoom controls. ✓
     - Time range selection. ✓
 - Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓
-- Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓/□
+- Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓
+  - Not applicable in v1: no static images are used in the app.
 - Templates:
   - Use `@if`, `@for`, `@switch`; avoid structural directives equivalents. ✓
   - Avoid `ngClass`/`ngStyle`; prefer property/class/style bindings. ✓
@@ -136,8 +137,10 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
     - Implemented nearest-point tooltip in GraphCanvas with stop name when using index-based distances; for real distances, tooltip shows time and series id. Persisting nothing; purely UI. ✓
   - Keyboard navigation for panning/zooming; focus management. ✓
     - Implemented keyboard controls on GraphCanvas: focusable host (tabindex=0), aria-keyshortcuts, and keydown handler using host bindings (no HostListener). '+'/'=' zoom in, '-' zoom out, ArrowUp/ArrowDown and PageUp/PageDown pan time window (Shift for larger steps). ✓
-  - High-contrast color palette; ARIA roles/labels for interactive elements. ✓/□
+  - High-contrast color palette; ARIA roles/labels for interactive elements. ✓
+    - Increased contrast for buttons, links, borders, and text in Toolbar, FileDrop, Legend; added strong :focus-visible outlines and :focus-within styles for keyboard users.
     - Added ARIA roles and keyboard support to the split resizer (role=separator, aria-orientation=vertical, tabindex=0, ArrowLeft/ArrowRight to resize).
+    - Follow-up: run automated a11y checks (axe) across main views and verify WCAG AA for color contrast in all states (hover/active/disabled).
   - Y-axis orientation: ensure time increases going down (invert axis rendering and tick mapping accordingly). Note that in SVG, the coordinates grow going down on the screen. ✓
 - Loading/export:
   - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓
@@ -175,7 +178,11 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
 - NPM scripts for build, serve, test, e2e, lint. ✓/□
 
 ## 13. Sample Data and Docs
-- Create sample train line files (2+ lines) and a sample topology file for testing/demos. ✓/□
+- Create sample train line files (2+ lines) and a sample topology file for testing/demos. ✓
+  - Added public/samples/local-a.train (with stop_location and extra_stop_times). ✓
+  - Added public/samples/express-b.train (index-based distances). ✓
+  - Added public/samples/topology.txt (Central, East Side, Meadow, Hilltop). ✓
+  - Follow-up: Add UI links/buttons to quickly load sample files from public/samples. ✓
 - Update README with usage instructions and file format examples. ✓/□
 
 ## 14. Delivery Checklist

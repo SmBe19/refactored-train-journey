@@ -1,0 +1,15 @@
+---
+name: Express B
+default_stop_time: 00:00:15
+period: 01:00:00
+runs:
+  - 06:10
+  - 06:40
+# No explicit stop_location: will fall back to topology index positions
+extra_stop_times: {}
+---
+Central
+04:00
+Meadow
+02:30
+Hilltop

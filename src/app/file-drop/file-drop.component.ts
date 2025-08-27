@@ -46,6 +46,7 @@ interface UiFile {
 
       <div class="file-drop__actions">
         <button type="button" class="btn" (click)="onAddPastedTrain()">Add pasted train line</button>
+        <button type="button" class="btn" (click)="onLoadSamples()" aria-label="Load sample files">Load sample files</button>
       </div>
 
       @if (trainFiles().length > 0) {
@@ -115,25 +116,35 @@ interface UiFile {
   `,
   styles: [
     `
-      :host { display: block; border: 1px dashed #bdbdbd; border-radius: 8px; padding: .75rem; margin-bottom: 1rem; }
+      :host { display: block; border: 1px dashed #757575; border-radius: 8px; padding: .75rem; margin-bottom: 1rem; }
       .file-drop__row { margin-bottom: .75rem; }
-      .file-drop__label { display: block; font-weight: 600; margin-bottom: .25rem; }
+      .file-drop__label { display: block; font-weight: 700; margin-bottom: .25rem; color: #111; }
       .file-drop__input { display: block; }
-      .file-drop__help { font-size: .85rem; color: #555; margin-top: .25rem; }
+      .file-drop__help { font-size: .9rem; color: #333; margin-top: .25rem; }
       .file-drop__actions { margin-top: .5rem; }
-      .btn { padding: .25rem .5rem; border: 1px solid #1976d2; background: #e3f2fd; border-radius: 4px; color: #0d47a1; cursor: pointer; }
-      .btn:hover { background: #bbdefb; }
-      .link { background: none; border: none; color: #1976d2; cursor: pointer; text-decoration: underline; padding: 0; }
+      .btn {
+        padding: .25rem .5rem;
+        border: 1px solid #0d47a1;
+        background: #1976d2;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+      }
+      .btn:hover { background: #1565c0; }
+      .btn:focus-visible { outline: 3px solid #ffab00; outline-offset: 2px; }
+      .link { background: none; border: none; color: #0d47a1; cursor: pointer; text-decoration: underline; padding: 0; }
+      .link:focus-visible { outline: 3px solid #ffab00; outline-offset: 2px; }
       .file-drop__list { margin: .5rem 0 0; padding: 0; list-style: none; }
       .file-drop__item { margin-bottom: .5rem; }
       .file-drop__file-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; }
-      .file-drop__name { font-weight: 600; }
-      .file-drop__type { font-size: .75rem; color: #1a237e; background: #e8eaf6; border: 1px solid #c5cae9; padding: 0 .25rem; border-radius: 3px; }
+      .file-drop__name { font-weight: 700; color: #111; }
+      .file-drop__type { font-size: .75rem; color: #0d47a1; background: #e3f2fd; border: 1px solid #90caf9; padding: 0 .25rem; border-radius: 3px; }
       .file-drop__single { margin-top: .25rem; }
       .file-drop__textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
-      .drop-zone { margin-top: .5rem; border: 2px dashed #9e9e9e; border-radius: 6px; padding: .75rem; text-align: center; background: #fafafa; }
-      .drop-zone--active { border-color: #1976d2; background: #e3f2fd; }
-      .drop-zone__text { margin: 0; color: #555; }
+      .drop-zone { margin-top: .5rem; border: 2px dashed #616161; border-radius: 6px; padding: .75rem; text-align: center; background: #fafafa; }
+      .drop-zone--active { border-color: #0d47a1; background: #e3f2fd; }
+      .drop-zone:focus-visible { outline: 3px solid #ffab00; outline-offset: 2px; }
+      .drop-zone__text { margin: 0; color: #333; }
     `,
   ],
 })
@@ -148,6 +159,8 @@ export class FileDropComponent {
   protected readonly dragActiveTopo = signal(false);
 
   private static readonly STORE_KEY = 'train-graph-viewer:v1';
+  private static readonly SAMPLE_LINES = ['/samples/local-a.train', '/samples/express-b.train'] as const;
+  private static readonly SAMPLE_TOPO = '/samples/topology.txt' as const;
 
   constructor() {
     // Hydrate from localStorage if present
@@ -251,6 +264,29 @@ export class FileDropComponent {
     const newFile: UiFile = { fileName: `train-${count}.txt`, text: '' };
     this.trainFiles.update((arr) => [...arr, newFile]);
     this.updateService();
+  }
+
+  async onLoadSamples(): Promise<void> {
+    // Fetch sample train line files and topology from public/samples and set into UI + service
+    try {
+      const trainFetches = FileDropComponent.SAMPLE_LINES.map(async (path) => {
+        const res = await fetch(path, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Failed to load ${path}`);
+        const text = await res.text();
+        const fileName = path.split('/').pop() ?? 'train.txt';
+        return { fileName, text } satisfies UiFile;
+      });
+      const topoRes = await fetch(FileDropComponent.SAMPLE_TOPO, { cache: 'no-store' });
+      if (!topoRes.ok) throw new Error('Failed to load topology sample');
+      const topoText = await topoRes.text();
+
+      const loadedTrains = await Promise.all(trainFetches);
+      this.trainFiles.set(loadedTrains);
+      this.topologyFile.set({ fileName: 'topology.txt', text: topoText });
+      this.updateService();
+    } catch {
+      // ignore fetch errors for now
+    }
   }
 
   onRemoveTrain(index: number): void {
