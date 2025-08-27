@@ -35,7 +35,7 @@ export class ScheduleService {
     for (const { spec } of this.files.parsedTrainLines()) {
       const runs = computeRunsForLine(spec);
       for (const run of runs) {
-        const id = `${run.lineName}@${run.runStart}`;
+        const id = `${run.lineName}@${formatTimeOfDay(run.runStart as unknown as number)}`;
         const color = this.colors.colorFor(id, run.lineName);
         const points = computeGraphPoints(spec, topo, run);
         if (points.length >= 2) {
@@ -110,3 +110,14 @@ function compare(a: TimeSeconds, b: TimeSeconds): number {
   const nb = b as unknown as number;
   return na === nb ? 0 : na < nb ? -1 : 1;
 }
+
+// Format time-of-day seconds into HH:MM:SS
+function formatTimeOfDay(totalSeconds: number): string {
+  const total = Math.max(0, Math.floor(totalSeconds));
+  const hh = Math.floor(total / 3600);
+  const mm = Math.floor((total % 3600) / 60);
+  const ss = total % 60;
+  return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
+}
+
+function pad2(n: number): string { return n < 10 ? `0${n}` : String(n); }

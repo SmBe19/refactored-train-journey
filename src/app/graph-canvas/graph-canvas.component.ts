@@ -202,9 +202,12 @@ export class GraphCanvasComponent {
     const svg = ev.currentTarget as SVGSVGElement | null;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const px = ev.clientX - rect.left;
-    const py = ev.clientY - rect.top;
-    // Note: we compute nearest point in screen space for simplicity
+    // convert pointer position from CSS pixels to SVG user-space (viewBox) units
+    const scaleX = this.width / rect.width;
+    const scaleY = this.height / rect.height;
+    const px = (ev.clientX - rect.left) * scaleX;
+    const py = (ev.clientY - rect.top) * scaleY;
+    // Note: we compute nearest point in SVG user space for simplicity
 
     // Find nearest point across visible series (euclidean in screen space)
     let best: { sx: number; sy: number; label1: string; label2: string } | null = null;
