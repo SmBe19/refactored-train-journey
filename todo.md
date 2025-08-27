@@ -2,6 +2,8 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided.
+
 ## 1. Requirements and Scope
 - Clarify units and conventions:
   - Decide base time unit (seconds recommended due to HH:MM:SS support) and distance unit (prefer real distances via `stop_location`; fall back to stop order if not provided). If distances are not provided, use stop order as the distance axis. ✓/□
@@ -77,10 +79,10 @@ This document enumerates the tasks required to implement the Angular application
   - For each run, create polyline segments connecting (distance, time) for each visited stop that exists in topology. ✓
   - If a line has stops not in topology, skip those points. ✓
 - Rendering:
-  - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓/□
-  - Implement pan/zoom (optional v1: vertical scroll, time window selection). ✓/□
+  - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓
+  - Implement pan/zoom (optional v1: vertical scroll, time window selection). □
   - Draw station grid lines at each topology stop; label axes. ✓/□
-  - Color-code lines/runs; legend. ✓/□
+  - Color-code lines/runs; legend. □
 
 ## 7. Angular Application Architecture
 - Routing (lazy-loaded feature):
@@ -96,16 +98,16 @@ This document enumerates the tasks required to implement the Angular application
   - Use `computed()` for derived series from raw inputs. ✓
   - Never use `mutate`; use `set`/`update`. ✓
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
-  - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. (Shell created; placeholder content) ✓
+  - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. ✓
   - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topology file. ✓
     - Implement file picker (multiple train lines + single topology) and wire to FileParserService. ✓
     - Display selected file names. ✓
     - Drag-and-drop area. ✓
-    - Pasting raw text into textareas. □
+    - Pasting raw text into textareas. ✓
   - `ErrorListComponent`: shows parsing/validation errors. ✓ (implemented and integrated into GraphPage)
-  - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓/□
-  - `LegendComponent`: color legend and toggles per line/run. ✓/□
-  - `ToolbarComponent`: controls (zoom, time range, export). ✓/□
+  - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓ (basic axes + series rendering; grid lines for topology indices when no distances)
+  - `LegendComponent`: color legend and toggles per line/run. □
+  - `ToolbarComponent`: controls (zoom, time range, export). □
 - Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓/□
 - Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓/□
 - Templates:
@@ -116,9 +118,9 @@ This document enumerates the tasks required to implement the Angular application
 
 ## 8. UI/UX and Accessibility
 - File input & editing UX:
-  - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓/□
-  - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓/□
-  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□ (errors list shows file and line; file names shown in loader; types still pending)
+  - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓
+  - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓
+  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□ (errors list shows file and line; file names shown in loader; file "types" still pending)
 - Graph UX:
   - Tooltips on hover showing stop, time, line/run name. ✓/□
   - Keyboard navigation for panning/zooming; focus management. ✓/□
