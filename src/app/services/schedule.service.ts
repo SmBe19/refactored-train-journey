@@ -58,8 +58,8 @@ function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
 
     const schedule = spec.segments.map((seg, idx) => {
       const arrival = t;
-      const extra = meta.extraStopTimes[seg.stop] ?? (0 as unknown as TimeSeconds);
-      const dwell = add(meta.defaultStopTime, extra);
+      // No dwell at the initial stop; ignore extra_stop_times for the first stop
+      const dwell = idx === 0 ? (0 as TimeSeconds) : add(meta.defaultStopTime, meta.extraStopTimes[seg.stop] ?? (0 as unknown as TimeSeconds));
       const departure = add(arrival, dwell);
 
       // Advance time to next stop by travel time

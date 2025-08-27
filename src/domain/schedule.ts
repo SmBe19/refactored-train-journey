@@ -10,11 +10,11 @@ export function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
     let currentTime: TimeSeconds = runStart as unknown as TimeSeconds; // runStart is TimeOfDaySeconds branded; timeline is compatible in seconds
 
     const schedule = segments.map((seg, idx): { stop: string; arrival: TimeSeconds; departure: TimeSeconds } => {
-      // Arrival at first stop equals currentTime (departure of implicit origin)
+      // Arrival at first stop equals currentTime (train departs at run start)
       const arrival = currentTime;
-      const extra = meta.extraStopTimes[seg.stop] ?? (0 as TimeSeconds);
-      const dwell = (meta.defaultStopTime as number) + (extra as number);
-      const departure = asTimeSeconds((arrival as number) + dwell);
+      // No dwell at the initial stop; ignore extra_stop_times there
+      const dwellSeconds = idx === 0 ? 0 : ((meta.defaultStopTime as number) + ((meta.extraStopTimes[seg.stop] ?? (0 as TimeSeconds)) as number));
+      const departure = asTimeSeconds((arrival as number) + dwellSeconds);
 
       // Advance time by travel to next for next iteration
       const travel = seg.travelToNext ?? (0 as TimeSeconds);

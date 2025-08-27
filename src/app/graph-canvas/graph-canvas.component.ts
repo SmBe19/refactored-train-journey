@@ -16,6 +16,7 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
     tabindex: '0',
     'aria-keyshortcuts': '+, -, ArrowUp, ArrowDown, PageUp, PageDown',
     '(keydown)': 'onKeydown($event)',
+    '(document:keydown)': 'onKeydown($event)',
     '(document:mousemove)': 'onDocumentMouseMove($event)',
     '(document:mouseup)': 'onDocumentMouseUp()',
     '[class.dragging]': 'dragging()'
@@ -289,8 +290,8 @@ export class GraphCanvasComponent {
     const h = this.height - this.margin.top - this.margin.bottom;
     const range = this.dragStartWindow.max - this.dragStartWindow.min;
     if (!(range > 0 && h > 0)) return;
-    // y increases downward => moving mouse down should increase time (pan down)
-    const deltaSeconds = dySvg * (range / h);
+    // Invert to make content follow the pointer: dragging down moves content down (earlier times)
+    const deltaSeconds = -dySvg * (range / h);
     const next: TimeWindow = {
       min: this.dragStartWindow.min + deltaSeconds,
       max: this.dragStartWindow.max + deltaSeconds,
