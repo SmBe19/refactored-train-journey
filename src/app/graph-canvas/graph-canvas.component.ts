@@ -23,9 +23,8 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
   template: `
     <svg
       [attr.viewBox]="'0 0 ' + width + ' ' + height"
-      [attr.width]="width"
-      [attr.height]="height"
       xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid meet"
       class="graph"
       aria-labelledby="graphTitle"
       role="group"
@@ -161,9 +160,9 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
   `,
   styles: [
     `
-      :host { display: block; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+      :host { display: block; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; height: 100%; box-sizing: border-box; }
       :host.dragging { user-select: none; }
-      .graph { display: block; width: 100%; height: auto; }
+      .graph { display: block; width: 100%; height: 100%; }
     `,
   ],
 })
@@ -233,7 +232,7 @@ export class GraphCanvasComponent {
         const dy = sy - py;
         const dist2 = dx * dx + dy * dy;
         if (!best || dist2 < (best as any).d2) {
-          const timeLabel = this.formatTimeLabel(p.time as unknown as number);
+          const timeLabel = this.formatTimeFull(p.time as unknown as number);
           let stopLabel = '';
           if (!this.hasStopDistances()) {
             const idx = Math.round(p.distance);
@@ -367,8 +366,8 @@ export class GraphCanvasComponent {
     const h = this.height - this.margin.top - this.margin.bottom;
     if (tmax === tmin) return this.margin.top + h / 2;
     const t = (tSec - tmin) / (tmax - tmin);
-    // y grows downward in SVG
-    return this.margin.top + (1 - t) * h;
+    // y grows downward in SVG; later times should have larger y
+    return this.margin.top + t * h;
   };
 
   protected pointsAttr(s: GraphSeries): string {
@@ -387,6 +386,15 @@ export class GraphCanvasComponent {
     const ss = total % 60;
     if (hh >= 1) return `${pad2(hh)}:${pad2(mm)}`; // show HH:MM once hours present
     return `${pad2(mm)}:${pad2(ss)}`; // otherwise MM:SS
+  };
+
+  // Tooltip formatter: always show HH:MM:SS for seconds precision
+  protected formatTimeFull = (tSec: number): string => {
+    const total = Math.max(0, Math.floor(tSec));
+    const hh = Math.floor(total / 3600);
+    const mm = Math.floor((total % 3600) / 60);
+    const ss = total % 60;
+    return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
   };
 
   private generateYTicks(): number[] {

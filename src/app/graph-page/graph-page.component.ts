@@ -16,12 +16,13 @@ import { HelpExamplesComponent } from '../help-examples/help-examples.component'
   },
   template: `
     <section class="graph-page__container" aria-labelledby="graphPageTitle">
-      <h2 id="graphPageTitle" class="graph-page__title">Train Graph Viewer</h2>
-      <p class="graph-page__subtitle">Load train lines and a topology to visualize schedules.</p>
-
       <div class="split" role="group" aria-label="Workspace split between inputs and graph">
         <!-- Left pane: inputs, messages, legend -->
         <aside class="split__left" [style.width.px]="leftWidth()" role="region" aria-label="Inputs and messages">
+          <header class="graph-page__header">
+            <h2 id="graphPageTitle" class="graph-page__title">Train Graph Viewer</h2>
+            <p class="graph-page__subtitle">Load train lines and a topology to visualize schedules.</p>
+          </header>
           <section class="graph-page__panel" aria-labelledby="loadTitle">
             <h3 id="loadTitle" class="graph-page__panel-title">Load files</h3>
             <app-help-examples />
@@ -65,20 +66,27 @@ import { HelpExamplesComponent } from '../help-examples/help-examples.component'
   `,
   styles: [
     `
-      :host { display: block; padding: 1rem; }
+      :host { display: block; position: fixed; inset: 0; padding: 1rem; box-sizing: border-box; }
+      .graph-page__container { height: 100%; min-height: 0; display: flex; }
       .graph-page__title { margin: 0 0 .25rem; }
       .graph-page__subtitle { color: #555; margin: 0 0 1rem; }
       .graph-page__panel-title { margin: .75rem 0 .5rem; font-size: 1rem; }
 
-      .split { display: flex; min-height: 60vh; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
-      .split__left { min-width: 240px; max-width: 70vw; padding: .75rem; overflow: auto; background: #fafafa; }
-      .split__right { flex: 1 1 auto; padding: .75rem; overflow: auto; }
+      .split { display: flex; height: 100%; flex: 1 1 auto; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; min-height: 0; }
+      .split__left { flex: 0 0 auto; min-width: 240px; max-width: 70vw; padding: .75rem; overflow: auto; background: #fafafa; min-height: 0; -webkit-overflow-scrolling: touch; }
+      .split__right { flex: 1 1 auto; padding: .75rem; overflow: hidden; display: flex; min-width: 0; min-height: 0; }
       .split__separator { width: 6px; cursor: col-resize; background: #e0e0e0; outline: none; touch-action: none; user-select: none; }
       .split__separator:focus { box-shadow: inset 0 0 0 2px #1976d2; }
 
+      /* Right panel layout: toolbar top, graph fills remaining height */
+      .split__right .graph-page__panel { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+      .split__right app-toolbar { flex: 0 0 auto; }
+      .split__right app-graph-canvas { flex: 1 1 auto; min-height: 0; }
+
       @media (max-width: 800px) {
-        .split { flex-direction: column; }
+        .split { flex-direction: column; height: auto; }
         .split__left { width: auto !important; max-width: none; }
+        .split__right { display: block; overflow: auto; }
         .split__separator { display: none; }
       }
     `,
