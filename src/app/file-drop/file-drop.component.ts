@@ -45,7 +45,7 @@ interface UiFile {
       </div>
 
       <div class="file-drop__actions">
-        <button type="button" class="btn" (click)="onAddPastedTrain()">Add pasted train line</button>
+        <button type="button" class="btn" (click)="onAddPastedTrain()">Add train line</button>
         <button type="button" class="btn" (click)="onLoadSamples()" aria-label="Load sample files">Load sample files</button>
       </div>
 
@@ -121,7 +121,7 @@ interface UiFile {
       .file-drop__label { display: block; font-weight: 700; margin-bottom: .25rem; color: #111; }
       .file-drop__input { display: block; }
       .file-drop__help { font-size: .9rem; color: #333; margin-top: .25rem; }
-      .file-drop__actions { margin-top: .5rem; }
+      .file-drop__actions { margin-top: .5rem; display: flex; align-items: center; gap: .5rem; }
       .btn {
         padding: .25rem .5rem;
         border: 1px solid #0d47a1;
