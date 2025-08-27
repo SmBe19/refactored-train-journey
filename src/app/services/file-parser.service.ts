@@ -81,10 +81,29 @@ export class FileParserService {
     return errs;
   });
 
+  // Non-fatal warnings: redundant extra_stop_times entries (zero durations)
+  readonly extraStopTimesWarnings = computed<ParseError[]>(() => {
+    const warns: ParseError[] = [];
+    for (const { fileName, spec } of this.parsedTrainLines()) {
+      const entries = Object.entries(spec.meta.extraStopTimes);
+      for (const [stop, dur] of entries) {
+        const seconds = (dur as unknown as number);
+        if (seconds === 0) {
+          warns.push({
+            file: fileName,
+            message: `Warning: extra_stop_times for stop "${stop}" is 0s and has no effect`,
+          });
+        }
+      }
+    }
+    return warns;
+  });
+
   readonly allErrors = computed<ParseError[]>(() => [
     ...this.trainLineErrors(),
     ...this.topographyErrors(),
     ...this.crossFileErrors(),
+    ...this.extraStopTimesWarnings(),
   ]);
 
   // Public API to set inputs

@@ -23,12 +23,12 @@ This document enumerates the tasks required to implement the Angular application
     - If `stop_location` is provided: keys must exist among stops; values are non-negative numbers. If omitted, stops are assumed evenly spaced for distance computations. ✓
   - Time formats:
     - Durations: `HH:MM:SS` or `MM:SS`.
-    - Time of day (runs): `HH:MM:SS` or `HH:MM`. ✓/□
+    - Time of day (runs): `HH:MM:SS` or `HH:MM`. ✓
 - Topography file (text):
   - One stop name per line; blank lines ignored; comments starting with `#` ignored. ✓
   - Validation:
     - No duplicates. ✓
-    - All referenced stops must exist in at least one loaded line. □
+    - All referenced stops must exist in at least one loaded line. ✓
 
 ## 3. Domain Models (TypeScript)
 - Types/interfaces (strict types, avoid `any`):
@@ -53,7 +53,8 @@ This document enumerates the tasks required to implement the Angular application
 - Implement topography parser (line-by-line). ✓ (src/domain/topography.ts)
 - Add cross-file validation:
   - Topography stops must be subset of union of stops across all lines. ✓ (validated in FileParserService.crossFileErrors)
-  - Warn (non-fatal) for unused extra_stop_times keys. □
+  - Warn (non-fatal) for unused extra_stop_times keys. ✓
+    - Implemented as warnings when extra_stop_times entries are zero seconds (redundant, no effect). Exposed via FileParserService.extraStopTimesWarnings and included in allErrors list. ✓
 
 ## 5. Scheduling Engine (Pure Functions)
 - For each `TrainLineSpec` and each `run`:
@@ -96,8 +97,12 @@ This document enumerates the tasks required to implement the Angular application
   - Never use `mutate`; use `set`/`update`. ✓
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
   - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. (Shell created; placeholder content) ✓
-  - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topography file. ✓/□
-  - `ErrorListComponent`: shows parsing/validation errors. ✓/□
+  - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topography file. ✓
+    - Implement file picker (multiple train lines + single topography) and wire to FileParserService. ✓
+    - Display selected file names. ✓
+    - Drag-and-drop area. □
+    - Pasting raw text into textareas. □
+  - `ErrorListComponent`: shows parsing/validation errors. ✓ (implemented and integrated into GraphPage)
   - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓/□
   - `LegendComponent`: color legend and toggles per line/run. ✓/□
   - `ToolbarComponent`: controls (zoom, time range, export). ✓/□
@@ -113,7 +118,7 @@ This document enumerates the tasks required to implement the Angular application
 - File input & editing UX:
   - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓/□
   - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓/□
-  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□
+  - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□ (errors list shows file and line; file names shown in loader; types still pending)
 - Graph UX:
   - Tooltips on hover showing stop, time, line/run name. ✓/□
   - Keyboard navigation for panning/zooming; focus management. ✓/□
