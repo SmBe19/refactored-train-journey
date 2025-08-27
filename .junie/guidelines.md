@@ -48,4 +48,5 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## General
 
- - Do not try to run tests. Only build the project to validate your changes.
+ - Do not try to run tests.
+ - Do not build the project.

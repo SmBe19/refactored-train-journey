@@ -12,15 +12,15 @@ This document enumerates the tasks required to implement the Angular application
 
 ## 2. Input File Formats
 - Train line file (text with YAML frontmatter):
-  - Parse frontmatter fields: `name` (string), `default_stop_time` (duration, `HH:MM:SS` or `MM:SS`), `period` (duration, `HH:MM:SS` or `MM:SS`), `runs` (array of start times, `HH:MM:SS` or `HH:MM`), `stop_location` (map stop->distance number, optional), `extra_stop_times` (map stop->duration, `HH:MM:SS` or `MM:SS`). ✓/□
-  - Body contains alternating lines: stop name (string), travel time to next stop (duration, `HH:MM:SS` or `MM:SS`). Last stop has no following travel time. ✓/□
+  - Parse frontmatter fields: `name` (string), `default_stop_time` (duration, `HH:MM:SS` or `MM:SS`), `period` (duration, `HH:MM:SS` or `MM:SS`), `runs` (array of start times, `HH:MM:SS` or `HH:MM`), `stop_location` (map stop->distance number, optional), `extra_stop_times` (map stop->duration, `HH:MM:SS` or `MM:SS`). ✓
+  - Body contains alternating lines: stop name (string), travel time to next stop (duration, `HH:MM:SS` or `MM:SS`). Last stop has no following travel time. ✓
   - Validation rules:
-    - Non-empty name, at least two stops. ✓/□
-    - All travel times non-negative durations. ✓/□
-    - default_stop_time ≥ 0; period > 0. ✓/□
-    - runs times within [00:00:00, 24:00:00) or a consistent arbitrary timeline baseline. ✓/□
-    - extra_stop_times keys must exist among stops; values ≥ 0. ✓/□
-    - If `stop_location` is provided: keys must exist among stops; values are non-negative numbers. If omitted, stops are assumed evenly spaced for distance computations. ✓/□
+    - Non-empty name, at least two stops. ✓
+    - All travel times non-negative durations. ✓
+    - default_stop_time ≥ 0; period > 0. ✓
+    - runs times within [00:00:00, 24:00:00) or a consistent arbitrary timeline baseline. ✓
+    - extra_stop_times keys must exist among stops; values ≥ 0. ✓
+    - If `stop_location` is provided: keys must exist among stops; values are non-negative numbers. If omitted, stops are assumed evenly spaced for distance computations. ✓
   - Time formats:
     - Durations: `HH:MM:SS` or `MM:SS`.
     - Time of day (runs): `HH:MM:SS` or `HH:MM`. ✓/□
@@ -45,15 +45,15 @@ This document enumerates the tasks required to implement the Angular application
 
 ## 4. Parsing and Validation
 - Implement a pure parser for train line files:
-  - Split frontmatter (YAML) and body; use a minimal YAML parser; normalize keys. ✓/□
+  - Split frontmatter (YAML) and body; use a minimal YAML parser; normalize keys. ✓ (src/domain/train-line.ts: parseTrainLine)
   - Parse times:
-    - Durations: accept `HH:MM:SS` and `MM:SS`; convert to seconds. ✓ (src/domain/time.ts: parseDuration, with unit tests)
-    - Time of day (runs): accept `HH:MM:SS` and `HH:MM`; convert to seconds since baseline. ✓ (src/domain/time.ts: parseTimeOfDay, with unit tests)
-  - Build `TrainLineSpec`; collect `ParseError[]` on issues. ✓/□
-- Implement topography parser (line-by-line). ✓
+    - Durations: accept `HH:MM:SS` and `MM:SS`; convert to seconds. ✓ (src/domain/time.ts: parseDuration)
+    - Time of day (runs): accept `HH:MM:SS` and `HH:MM`; convert to seconds since baseline. ✓ (src/domain/time.ts: parseTimeOfDay)
+  - Build `TrainLineSpec`; collect `ParseError[]` on issues. ✓ (src/domain/train-line.ts)
+- Implement topography parser (line-by-line). ✓ (src/domain/topography.ts)
 - Add cross-file validation:
-  - Topography stops must be subset of union of stops across all lines. ✓/□
-  - Warn (non-fatal) for unused extra_stop_times keys. ✓/□
+  - Topography stops must be subset of union of stops across all lines. ✓ (validated in FileParserService.crossFileErrors)
+  - Warn (non-fatal) for unused extra_stop_times keys. □
 
 ## 5. Scheduling Engine (Pure Functions)
 - For each `TrainLineSpec` and each `run`:
@@ -85,13 +85,15 @@ This document enumerates the tasks required to implement the Angular application
 - Routing (lazy-loaded feature):
   - `routes: [{ path: '', loadComponent: () => import('./app/graph-page/graph-page.component') }]` ✓
 - Services (providedIn: 'root') using `inject()`:
-  - `FileParserService` for parsing line/topography files. ✓/□
-  - `ScheduleService` for computing schedules and series. ✓/□
-  - `ColorService` to assign colors per line/run. ✓/□
+  - `FileParserService` for parsing line/topography files. ✓ (src/app/services/file-parser.service.ts)
+    - Use domain parsers: parseTrainLine (src/domain/train-line.ts) and parseTopography (src/domain/topography.ts). ✓
+    - Return signals or Results with aggregated ParseError[] per file. ✓
+  - `ScheduleService` for computing schedules and series. ✓
+  - `ColorService` to assign colors per line/run. ✓
 - State management (signals):
   - Signals for: loaded train lines, topography, validation errors, derived graph series, selected time window. ✓/□
-  - Use `computed()` for derived series from raw inputs. ✓/□
-  - Never use `mutate`; use `set`/`update`. ✓/□
+  - Use `computed()` for derived series from raw inputs. ✓
+  - Never use `mutate`; use `set`/`update`. ✓
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
   - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. (Shell created; placeholder content) ✓
   - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topography file. ✓/□
