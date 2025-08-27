@@ -84,6 +84,36 @@ import { TimeWindowService } from '../services/time-window.service';
             [attr.transform]="'rotate(-45, ' + xForDistance(label.index) + ', ' + (height - margin.bottom + 12) + ')'"
           >{{ label.name }}</text>
         }
+      } @else {
+        <!-- Real-distance mode: numeric X-axis ticks and grid lines -->
+        @for (tick of xTicks(); track tick) {
+          <!-- bottom tick mark -->
+          <line
+            [attr.x1]="xForDistance(tick)"
+            [attr.y1]="height - margin.bottom"
+            [attr.x2]="xForDistance(tick)"
+            [attr.y2]="height - margin.bottom + 4"
+            stroke="#424242"
+            stroke-width="1"
+          />
+          <!-- vertical grid line -->
+          <line
+            [attr.x1]="xForDistance(tick)"
+            [attr.y1]="margin.top"
+            [attr.x2]="xForDistance(tick)"
+            [attr.y2]="height - margin.bottom"
+            stroke="#eeeeee"
+            stroke-width="1"
+          />
+          <!-- numeric label -->
+          <text
+            [attr.x]="xForDistance(tick)"
+            [attr.y]="height - margin.bottom + 16"
+            text-anchor="middle"
+            fill="#616161"
+            font-size="9"
+          >{{ formatDistanceLabel(tick) }}</text>
+        }
       }
 
       <!-- Y-axis ticks and labels -->
@@ -295,7 +325,10 @@ export class GraphCanvasComponent {
     return s.points.map((p) => `${this.xForDistance(p.distance)},${this.yForTime(p.time as unknown as number)}`).join(' ');
   }
 
+  protected readonly xTicks = computed<number[]>(() => this.generateXTicks());
   protected readonly yTicks = computed<number[]>(() => this.generateYTicks());
+
+  protected formatDistanceLabel = (d: number): string => formatNumberCompact(d);
 
   protected formatTimeLabel = (tSec: number): string => {
     const total = Math.max(0, Math.floor(tSec));
@@ -310,6 +343,18 @@ export class GraphCanvasComponent {
     const [min, max] = this.yDomain();
     if (!(Number.isFinite(min) && Number.isFinite(max))) return [];
     const count = 5;
+    if (max === min) return [min];
+    const step = niceStep((max - min) / count);
+    const start = Math.ceil(min / step) * step;
+    const ticks: number[] = [];
+    for (let v = start; v <= max; v += step) ticks.push(v);
+    return ticks;
+  }
+
+  private generateXTicks(): number[] {
+    const [min, max] = this.xDomain();
+    if (!(Number.isFinite(min) && Number.isFinite(max))) return [];
+    const count = 6;
     if (max === min) return [min];
     const step = niceStep((max - min) / count);
     const start = Math.ceil(min / step) * step;
@@ -357,9 +402,16 @@ function pad2(n: number): string { return n < 10 ? `0${n}` : String(n); }
 
 function niceStep(raw: number): number {
   // choose a 'nice' step from {1,2,5} * 10^k
+  if (!(raw > 0)) return 1;
   const exp = Math.floor(Math.log10(raw));
   const base = raw / Math.pow(10, exp);
   let nice = 1;
   if (base > 5) nice = 10; else if (base > 2) nice = 5; else if (base > 1) nice = 2; else nice = 1;
   return nice * Math.pow(10, exp);
+}
+
+// format numeric distance compactly
+function formatNumberCompact(n: number): string {
+  const s = n.toFixed(2);
+  return s.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 }

@@ -99,7 +99,7 @@ interface UiFile {
 
       <div class="file-drop__topo">
         <div class="file-drop__file-head">
-          <span class="file-drop__name">{{ topologyFile()?.fileName ?? 'pasted-topology.txt' }}</span>
+          <span class="file-drop__name">{{ topologyFile()?.fileName ?? 'topology.txt' }}</span>
           <span class="file-drop__type" aria-hidden="true">Topology</span>
           <button type="button" class="link" (click)="onClearTopology()" aria-label="Clear topology">Clear</button>
         </div>
@@ -156,11 +156,18 @@ export class FileDropComponent {
       if (raw) {
         const parsed = JSON.parse(raw) as { trainFiles?: UiFile[]; topologyFile?: UiFile | null };
         if (Array.isArray(parsed.trainFiles)) {
-          // validate shape minimally
-          this.trainFiles.set(parsed.trainFiles.map((f) => ({ fileName: String((f as any).fileName), text: String((f as any).text) })));
+          // validate shape minimally and strip legacy 'pasted-' prefix from names
+          this.trainFiles.set(
+            parsed.trainFiles.map((f) => {
+              const name = String((f as any).fileName ?? 'train.txt');
+              const cleanName = name.replace(/^pasted-/, '');
+              return { fileName: cleanName, text: String((f as any).text ?? '') };
+            })
+          );
         }
         if (parsed.topologyFile && typeof parsed.topologyFile.fileName === 'string' && typeof parsed.topologyFile.text === 'string') {
-          this.topologyFile.set({ fileName: parsed.topologyFile.fileName, text: parsed.topologyFile.text });
+          const topoName = parsed.topologyFile.fileName.replace(/^pasted-/, '');
+          this.topologyFile.set({ fileName: topoName, text: parsed.topologyFile.text });
         }
       }
     } catch {
@@ -241,7 +248,7 @@ export class FileDropComponent {
 
   onAddPastedTrain(): void {
     const count = this.trainFiles().length + 1;
-    const newFile: UiFile = { fileName: `pasted-train-${count}.txt`, text: '' };
+    const newFile: UiFile = { fileName: `train-${count}.txt`, text: '' };
     this.trainFiles.update((arr) => [...arr, newFile]);
     this.updateService();
   }
@@ -262,7 +269,7 @@ export class FileDropComponent {
   }
 
   onTopologyTextChange(value: string): void {
-    const fileName = this.topologyFile()?.fileName ?? 'pasted-topology.txt';
+    const fileName = this.topologyFile()?.fileName ?? 'topology.txt';
     this.topologyFile.set({ fileName, text: value });
     this.updateService();
   }
@@ -273,7 +280,7 @@ export class FileDropComponent {
   }
 
   onClearTopology(): void {
-    this.topologyFile.set({ fileName: 'pasted-topology.txt', text: '' });
+    this.topologyFile.set({ fileName: 'topology.txt', text: '' });
     this.updateService();
   }
 

@@ -2,15 +2,15 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
-Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG, Export PNG, and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar. Implemented nearest-point hover tooltips in GraphCanvas showing time and series, and stop name when using index-based distances. Updated FileDropComponent to display file types (Train line, Topology) alongside file names.
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Ensured Y-axis orientation with time increasing downward. Added numeric X-axis ticks and vertical grid lines when real distances (stop_location) are provided. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG, Export PNG, and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar. Implemented nearest-point hover tooltips in GraphCanvas showing time and series, and stop name when using index-based distances. Updated FileDropComponent to display file types (Train line, Topology) alongside file names. Removed 'pasted-' prefix from UI file names (new and hydrated data) and defaulted topology name to 'topology.txt'. Added in-UI file format help with copyable minimal examples and README link in the Load files panel.
 
 ## 1. Requirements and Scope
 - Clarify units and conventions:
-  - Decide base time unit (seconds recommended due to HH:MM:SS support) and distance unit (prefer real distances via `stop_location`; fall back to stop order if not provided). If distances are not provided, use stop order as the distance axis. ✓/□
-  - Confirm input encoding (UTF-8) and line endings. ✓/□
+  - Decide base time unit (seconds recommended due to HH:MM:SS support) and distance unit (prefer real distances via `stop_location`; fall back to stop order if not provided). If distances are not provided, use stop order as the distance axis. ✓
+  - Confirm input encoding (UTF-8) and line endings. ✓
 - Non-goals for v1:
-  - No server backend; fully client-side. ✓/□
-  - Persistence is required in-browser (no server): store user data in browser storage so it survives tab/browser restarts. ✓/□
+  - No server backend; fully client-side. ✓
+  - Persistence is required in-browser (no server): store user data in browser storage so it survives tab/browser restarts. ✓
 
 ## 2. Input File Formats
 - Train line file (text with YAML frontmatter):
@@ -82,6 +82,7 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓
   - Implement pan/zoom (optional v1: vertical scroll, time window selection). ✓ (basic time window selection via toolbar buttons)
   - Draw station grid lines at topology indices when no explicit stop distances are provided and label axes (x: stop names when index-based, y: time ticks). ✓
+  - When real distances are provided (stop_location), show numeric X-axis ticks with vertical grid lines and formatted labels. ✓
   - Color-code lines/runs; legend. ✓
 
 ## 7. Angular Application Architecture
@@ -111,11 +112,11 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
     - Export actions (SVG, JSON). ✓
     - Zoom controls. ✓
     - Time range selection. ✓
-- Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓/□
+- Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓
 - Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓/□
 - Templates:
-  - Use `@if`, `@for`, `@switch`; avoid structural directives equivalents. ✓/□
-  - Avoid `ngClass`/`ngStyle`; prefer property/class/style bindings. ✓/□
+  - Use `@if`, `@for`, `@switch`; avoid structural directives equivalents. ✓
+  - Avoid `ngClass`/`ngStyle`; prefer property/class/style bindings. ✓
 - Change detection:
   - Ensure all components (including App and GraphPageComponent) use OnPush. ✓
 
@@ -124,16 +125,20 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - Support multiple file selection, drag-and-drop, and pasting raw text into textareas. ✓
   - After upload or paste, display file contents in editable textareas; re-parse automatically on changes and update the graph live. ✓
   - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓
-  - Provide in-UI documentation and examples of the required file formats (Train line with YAML frontmatter and Topology), including minimal and full examples; link to README for details. □
-  - Remove the "pasted" prefix for manually created/pasted files in the UI; display the user-provided or default name without any prefix. □
-  - Resize/reflow the File UI (editor and messages) so files and the graph are visible simultaneously without scrolling (e.g., side-by-side layout or resizable panes). □
+  - Provide in-UI documentation and examples of the required file formats (Train line with YAML frontmatter and Topology), including minimal and full examples; link to README for details. ✓
+  - Remove the "pasted" prefix for manually created/pasted files in the UI; display the user-provided or default name without any prefix. ✓
+  - Resize/reflow the File UI (editor and messages) so files and the graph are visible simultaneously without scrolling (e.g., side-by-side layout or resizable panes). ✓
+    - Implemented a two-pane split layout in GraphPage with a draggable, keyboard-accessible vertical resizer. Left pane contains Help/Load files, Messages, and Legend; right pane contains Toolbar and Graph. Pane width persists in localStorage and is constrained between 240px and 70% of viewport. Mobile (<=800px) stacks vertically and hides the resizer.
+    - Follow-up: support touch/pointer-based resizing for mobile/tablets (pointer events). ✓
+    - Follow-up: double-click separator to reset to default width. ✓
 - Graph UX:
   - Tooltips on hover showing stop, time, line/run name. ✓
     - Implemented nearest-point tooltip in GraphCanvas with stop name when using index-based distances; for real distances, tooltip shows time and series id. Persisting nothing; purely UI. ✓
   - Keyboard navigation for panning/zooming; focus management. ✓
     - Implemented keyboard controls on GraphCanvas: focusable host (tabindex=0), aria-keyshortcuts, and keydown handler using host bindings (no HostListener). '+'/'=' zoom in, '-' zoom out, ArrowUp/ArrowDown and PageUp/PageDown pan time window (Shift for larger steps). ✓
   - High-contrast color palette; ARIA roles/labels for interactive elements. ✓/□
-  - Y-axis orientation: ensure time increases going down (invert axis rendering and tick mapping accordingly). □
+    - Added ARIA roles and keyboard support to the split resizer (role=separator, aria-orientation=vertical, tabindex=0, ArrowLeft/ArrowRight to resize).
+  - Y-axis orientation: ensure time increases going down (invert axis rendering and tick mapping accordingly). Note that in SVG, the coordinates grow going down on the screen. ✓
 - Loading/export:
   - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓
     - Export SVG. ✓

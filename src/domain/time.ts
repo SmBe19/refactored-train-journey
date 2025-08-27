@@ -28,7 +28,17 @@ export function parseDuration(input: string): Result<TimeSeconds, string> {
 
 // Parse a time-of-day string HH:MM or HH:MM:SS into seconds since start of day
 export function parseTimeOfDay(input: string): Result<TimeOfDaySeconds, string> {
-  const s = input.trim();
+  // Normalize common YAML list entry forms like "- 06 30" -> "06:30"
+  let s = input.trim();
+  // strip an optional leading dash from YAML array items if passed through
+  if (s.startsWith('-')) {
+    s = s.slice(1).trim();
+  }
+  // If the string uses spaces between numeric groups (e.g., "HH MM" or "HH MM SS"), convert spaces to colons
+  if (/^\d{1,2}\s+\d{1,2}(?:\s+\d{1,2})?$/.test(s)) {
+    s = s.replace(/\s+/g, ':');
+  }
+
   if (!/^\d{1,2}:\d{2}(?::\d{2})?$/.test(s)) {
     return err(`Invalid time of day format: ${input}`);
   }

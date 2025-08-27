@@ -24,6 +24,15 @@ All durations (e.g. stop times and travel times) are in the format `HH:MM:SS` or
 ## Topology
 The topology (the list of stops which should be displayed in the graph) is specified in a single text file, containing the name of the stops, one per line.
 
+## Graph details
+- Axes:
+  - X axis is distance along the line.
+    - If `stop_location` is provided in the train line frontmatter, those numeric distances are used and the X axis shows numeric ticks with vertical grid lines.
+    - If `stop_location` is not provided, the X axis uses stop order indices (0..N-1) and labels each vertical grid line with the stop name.
+  - Y axis is time and increases downward (top = earlier time, bottom = later time), matching SVG coordinate space. Ticks show MM:SS until 1 hour, then HH:MM.
+- Multiple runs: every departure in `runs` is rendered as its own colored series. The legend shows one toggle per run (LineName@StartTime).
+- Period handling: if a run completes early, it idles at the last stop until `runStart + period` (this affects its final timestamp on the graph).
+
 ## Usage
 Files can either be uploaded or directly pasted into the textareas. After uploading, the files can be edited in textareas and the page will automatically update. All the data is stored in the browser, so it is available after closing the browser.
 
