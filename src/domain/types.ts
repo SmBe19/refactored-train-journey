@@ -15,7 +15,6 @@ export interface TrainLineMeta {
   defaultStopTime: TimeSeconds;
   period: TimeSeconds;
   runs: TimeOfDaySeconds[];
-  stopLocation?: Record<StopId, number>; // non-negative numbers, if present
   extraStopTimes: Record<StopId, TimeSeconds>;
 }
 

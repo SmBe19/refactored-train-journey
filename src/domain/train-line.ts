@@ -49,21 +49,11 @@ export function parseTrainLine(text: string, fileName: string = 'train-line.txt'
   if ((meta.period as number) <= 0) {
     errors.push({ file: fileName, message: '"period" must be > 0' });
   }
-  // Validate extra_stop_times and stop_location keys exist among stops
+  // Validate extra_stop_times keys exist among stops
   const stopSet = new Set(segments.map((s) => s.stop));
   for (const key of Object.keys(meta.extraStopTimes ?? {})) {
     if (!stopSet.has(key)) {
       errors.push({ file: fileName, message: `extra_stop_times contains unknown stop "${key}"` });
-    }
-  }
-  if (meta.stopLocation) {
-    for (const [k, v] of Object.entries(meta.stopLocation)) {
-      if (!stopSet.has(k)) {
-        errors.push({ file: fileName, message: `stop_location contains unknown stop "${k}"` });
-      }
-      if (!(typeof v === 'number') || v < 0 || !Number.isFinite(v)) {
-        errors.push({ file: fileName, message: `stop_location[${k}] must be a non-negative number` });
-      }
     }
   }
 
@@ -106,7 +96,6 @@ function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Res
     default_stop_time?: TimeSeconds;
     period?: TimeSeconds;
     runs?: TimeOfDaySeconds[];
-    stop_location?: Record<string, number>;
     extra_stop_times?: Record<string, TimeSeconds>;
   }
   const temp: TempMeta = {};
@@ -150,17 +139,7 @@ function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Res
     // Handle maps: if value looks like { a: 1, b: 2 }
     if (value.startsWith('{') && value.endsWith('}')) {
       const map = parseInlineMap(value, fileName, currentLine());
-      if (key === 'stop_location') {
-        temp.stop_location = {};
-        for (const [k, v] of Object.entries(map)) {
-          const num = Number(v);
-          if (!Number.isFinite(num) || num < 0) {
-            errors.push({ file: fileName, line: currentLine(), message: `stop_location[${k}] must be a non-negative number` });
-          } else {
-            temp.stop_location[k] = num;
-          }
-        }
-      } else if (key === 'extra_stop_times') {
+      if (key === 'extra_stop_times') {
         temp.extra_stop_times = {};
         for (const [k, v] of Object.entries(map)) {
           const d = parseDuration(String(v));
@@ -191,17 +170,7 @@ function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Res
         i++;
       }
       const blockMap = parseBlockMap(block, fileName, currentLine());
-      if (key === 'stop_location') {
-        temp.stop_location = {};
-        for (const [k, v] of Object.entries(blockMap)) {
-          const num = Number(v);
-          if (!Number.isFinite(num) || num < 0) {
-            errors.push({ file: fileName, message: `stop_location[${k}] must be a non-negative number` });
-          } else {
-            temp.stop_location[k] = num;
-          }
-        }
-      } else if (key === 'extra_stop_times') {
+      if (key === 'extra_stop_times') {
         temp.extra_stop_times = {};
         for (const [k, v] of Object.entries(blockMap)) {
           const d = parseDuration(String(v));
@@ -245,7 +214,6 @@ function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Res
         (currentMap as any).__runs = items;
         break;
       }
-      case 'stop_location':
       case 'extra_stop_times':
         // Handled above for maps; if scalar appears, treat as error
         errors.push({ file: fileName, line: currentLine(), message: `${key} must be a map` });
@@ -278,7 +246,6 @@ function parseFrontmatter(yaml: string, fileName: string, baseLine: number): Res
     defaultStopTime: temp.default_stop_time,
     period: temp.period,
     runs,
-    stopLocation: temp.stop_location,
     extraStopTimes: temp.extra_stop_times,
   };
 

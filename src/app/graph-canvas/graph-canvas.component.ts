@@ -185,16 +185,7 @@ export class GraphCanvasComponent {
     return tr && tr.ok ? tr.value.stops : [];
   });
 
-  protected readonly hasStopDistances = computed(() => {
-    // If any series has non-integer distances not matching [0..N-1], assume real distances
-    const sers = this.series();
-    for (const s of sers) {
-      for (const p of s.points) {
-        if (!Number.isInteger(p.distance)) return true;
-      }
-    }
-    return false;
-  });
+  protected readonly hasStopDistances = computed(() => false);
 
   protected readonly topoIndices = computed(() => Array.from({ length: this.topoCount() }, (_, i) => i));
 

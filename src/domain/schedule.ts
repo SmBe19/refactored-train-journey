@@ -37,7 +37,7 @@ export function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
 
 /**
  * Build graph series points for runs filtered by topology stops.
- * X-axis: distance (from stopLocation when provided; else evenly spaced index by topology order).
+ * X-axis: distance along topology (evenly spaced by stop order).
  * Y-axis: time (seconds).
  */
 export function buildGraphSeriesForRuns(
@@ -49,8 +49,6 @@ export function buildGraphSeriesForRuns(
   const topoIndex = new Map<string, number>();
   topology.stops.forEach((s, i) => topoIndex.set(s, i));
 
-  const useStopLocation = !!spec.meta.stopLocation && Object.keys(spec.meta.stopLocation!).length > 0;
-
   const series: GraphSeries[] = [];
 
   runs.forEach((run, idx) => {
@@ -58,9 +56,7 @@ export function buildGraphSeriesForRuns(
 
     run.schedule.forEach((p) => {
       if (!topoIndex.has(p.stop)) return; // skip stops not in topology
-      const distance = useStopLocation
-        ? (spec.meta.stopLocation![p.stop] ?? topoIndex.get(p.stop)!)
-        : topoIndex.get(p.stop)!;
+      const distance = topoIndex.get(p.stop)!;
 
       points.push({ distance, time: p.arrival });
       // If dwell time exists (departure > arrival), we can add a vertical segment point at same distance

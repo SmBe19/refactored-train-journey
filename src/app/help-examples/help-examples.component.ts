@@ -45,7 +45,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
         </section>
 
         <p class="help-examples__more">
-          See the README for full format details, optional fields like stop_location and extra_stop_times, and more examples.
+          See the README for full format details, optional fields like extra_stop_times, and more examples.
         </p>
       </div>
     }
@@ -77,7 +77,6 @@ period: 01:00:00
 runs:
   - 06:00
   - 06:30
-stop_location: { Central: 0, "East Side": 5, Meadow: 9, Hilltop: 12 }
 extra_stop_times:
   Central: 00:00:30
 ---

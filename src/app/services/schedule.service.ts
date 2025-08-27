@@ -90,22 +90,10 @@ function computeGraphPoints(spec: TrainLineSpec, topo: Topology, run: RunInstanc
   const topoIndex = new Map<string, number>();
   topo.stops.forEach((s, i) => topoIndex.set(s, i));
 
-  // Distance function
-  const hasStopLoc = !!spec.meta.stopLocation;
-  const distanceFor = (stop: string): number | undefined => {
-    if (hasStopLoc) {
-      const d = spec.meta.stopLocation![stop];
-      if (typeof d === 'number') return d;
-    }
-    const idx = topoIndex.get(stop);
-    return idx !== undefined ? idx : undefined;
-  };
-
   const pts: GraphPoint[] = [];
   for (const p of run.schedule) {
     if (!topoIndex.has(p.stop)) continue; // only include stops present in topology
-    const dist = distanceFor(p.stop);
-    if (dist === undefined) continue;
+    const dist = topoIndex.get(p.stop)!;
     // Use arrival time for plotting; could be tweaked later to include dwell segments
     pts.push({ distance: dist, time: p.arrival });
   }
