@@ -25,30 +25,32 @@ This document enumerates the tasks required to implement the Angular application
     - Durations: `HH:MM:SS` or `MM:SS`.
     - Time of day (runs): `HH:MM:SS` or `HH:MM`. ✓/□
 - Topography file (text):
-  - One stop name per line; blank lines ignored; comments starting with `#` ignored. ✓/□
-  - Validation: no duplicates; all referenced stops must exist in at least one loaded line. ✓/□
+  - One stop name per line; blank lines ignored; comments starting with `#` ignored. ✓
+  - Validation:
+    - No duplicates. ✓
+    - All referenced stops must exist in at least one loaded line. □
 
 ## 3. Domain Models (TypeScript)
 - Types/interfaces (strict types, avoid `any`):
-  - `TimeSeconds = number` branded type to avoid unit confusion. ✓/□
-  - `StopId = string`.
-  - `TrainLineMeta { name: string; defaultStopTime: TimeSeconds; period: TimeSeconds; runs: TimeOfDay[]; stopLocation?: Record<StopId, number>; extraStopTimes: Record<StopId, TimeSeconds>; }` ✓/□
-  - `TrainLineSpec { meta: TrainLineMeta; segments: { stop: StopId; travelToNext?: TimeSeconds; }[] }` ✓/□
-  - `Topography { stops: StopId[] }` ✓/□
-  - `RunInstance { lineName: string; runStart: number; schedule: StopSchedulePoint[] }` ✓/□
-  - `StopSchedulePoint { stop: StopId; arrival: number; departure: number }` ✓/□
-  - `GraphSeries { id: string; color: string; points: { distance: number; time: number }[] }` ✓/□
-  - `ParseError { file: string; line?: number; message: string }` ✓/□
-  - Utility types: `Result<T, E>` to capture parsing/validation outcomes. ✓/□
+  - `TimeSeconds = number` branded type to avoid unit confusion. ✓
+  - `StopId = string`. ✓
+  - `TrainLineMeta { name: string; defaultStopTime: TimeSeconds; period: TimeSeconds; runs: TimeOfDay[]; stopLocation?: Record<StopId, number>; extraStopTimes: Record<StopId, TimeSeconds>; }` ✓
+  - `TrainLineSpec { meta: TrainLineMeta; segments: { stop: StopId; travelToNext?: TimeSeconds; }[] }` ✓
+  - `Topography { stops: StopId[] }` ✓
+  - `RunInstance { lineName: string; runStart: number; schedule: StopSchedulePoint[] }` ✓
+  - `StopSchedulePoint { stop: StopId; arrival: number; departure: number }` ✓
+  - `GraphSeries { id: string; color: string; points: { distance: number; time: number }[] }` ✓
+  - `ParseError { file: string; line?: number; message: string }` ✓
+  - Utility types: `Result<T, E>` to capture parsing/validation outcomes. ✓
 
 ## 4. Parsing and Validation
 - Implement a pure parser for train line files:
   - Split frontmatter (YAML) and body; use a minimal YAML parser; normalize keys. ✓/□
   - Parse times:
-    - Durations: accept `HH:MM:SS` and `MM:SS`; convert to seconds.
-    - Time of day (runs): accept `HH:MM:SS` and `HH:MM`; convert to seconds since baseline. ✓/□
+    - Durations: accept `HH:MM:SS` and `MM:SS`; convert to seconds. ✓ (src/domain/time.ts: parseDuration, with unit tests)
+    - Time of day (runs): accept `HH:MM:SS` and `HH:MM`; convert to seconds since baseline. ✓ (src/domain/time.ts: parseTimeOfDay, with unit tests)
   - Build `TrainLineSpec`; collect `ParseError[]` on issues. ✓/□
-- Implement topography parser (line-by-line). ✓/□
+- Implement topography parser (line-by-line). ✓
 - Add cross-file validation:
   - Topography stops must be subset of union of stops across all lines. ✓/□
   - Warn (non-fatal) for unused extra_stop_times keys. ✓/□
@@ -56,23 +58,23 @@ This document enumerates the tasks required to implement the Angular application
 ## 5. Scheduling Engine (Pure Functions)
 - For each `TrainLineSpec` and each `run`:
   - Compute arrival/departure times per stop:
-    - Start at `runStart` seconds from baseline (e.g., midnight). ✓/□
-    - At each stop: arrival = previous departure + travel time; departure = arrival + defaultStopTime + extraStopTimes[stop] (if any). ✓/□
-  - Enforce `period` rule: if the run finishes early, append idle at last stop until `runStart + period`. ✓/□
+    - Start at `runStart` seconds from baseline (e.g., midnight). ✓
+    - At each stop: arrival = previous departure + travel time; departure = arrival + defaultStopTime + extraStopTimes[stop] (if any). ✓
+  - Enforce `period` rule: if the run finishes early, append idle at last stop until `runStart + period`. ✓
 - Edge cases:
-  - Zero travel time segments. ✓/□
-  - Empty extra_stop_times. ✓/□
-  - Overlapping runs (allowed). ✓/□
-  - Large periods; wrap across midnight not required if using absolute seconds timeline. ✓/□
-- Output `RunInstance` and derive `GraphSeries` points filtered by topography stops. ✓/□
+  - Zero travel time segments. ✓
+  - Empty extra_stop_times. ✓
+  - Overlapping runs (allowed). ✓
+  - Large periods; wrap across midnight not required if using absolute seconds timeline. ✓
+- Output `RunInstance` and derive `GraphSeries` points filtered by topography stops. ✓
 
 ## 6. Graph Computation and Rendering
 - Axis definitions:
-  - X-axis: distance. Use `stop_location` distance when provided; otherwise use evenly spaced indices based on topography order. ✓/□
-  - Y-axis: time (seconds). ✓/□
+  - X-axis: distance. Use `stop_location` distance when provided; otherwise use evenly spaced indices based on topography order. ✓
+  - Y-axis: time (seconds). ✓
 - Series generation:
-  - For each run, create polyline segments connecting (distance, time) for each visited stop that exists in topography. ✓/□
-  - If a line has stops not in topography, skip those points. ✓/□
+  - For each run, create polyline segments connecting (distance, time) for each visited stop that exists in topography. ✓
+  - If a line has stops not in topography, skip those points. ✓
 - Rendering:
   - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓/□
   - Implement pan/zoom (optional v1: vertical scroll, time window selection). ✓/□
@@ -81,7 +83,7 @@ This document enumerates the tasks required to implement the Angular application
 
 ## 7. Angular Application Architecture
 - Routing (lazy-loaded feature):
-  - `routes: [{ path: '', loadComponent: () => import('./app/graph-page/graph-page.component') }]` ✓/□
+  - `routes: [{ path: '', loadComponent: () => import('./app/graph-page/graph-page.component') }]` ✓
 - Services (providedIn: 'root') using `inject()`:
   - `FileParserService` for parsing line/topography files. ✓/□
   - `ScheduleService` for computing schedules and series. ✓/□
@@ -91,7 +93,7 @@ This document enumerates the tasks required to implement the Angular application
   - Use `computed()` for derived series from raw inputs. ✓/□
   - Never use `mutate`; use `set`/`update`. ✓/□
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
-  - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. ✓/□
+  - `GraphPageComponent`: orchestrates inputs and displays graph and side panels. (Shell created; placeholder content) ✓
   - `FileDropComponent`: file picker/drag-drop for uploading multiple train line files and one topography file. ✓/□
   - `ErrorListComponent`: shows parsing/validation errors. ✓/□
   - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓/□
@@ -102,6 +104,8 @@ This document enumerates the tasks required to implement the Angular application
 - Templates:
   - Use `@if`, `@for`, `@switch`; avoid structural directives equivalents. ✓/□
   - Avoid `ngClass`/`ngStyle`; prefer property/class/style bindings. ✓/□
+- Change detection:
+  - Ensure all components (including App and GraphPageComponent) use OnPush. ✓
 
 ## 8. UI/UX and Accessibility
 - File input & editing UX:
@@ -138,7 +142,7 @@ This document enumerates the tasks required to implement the Angular application
   - Load sample files -> see lines on graph; errors visible for malformed files. ✓/□
 
 ## 12. Tooling and Configuration
-- Enable strict TypeScript options (no implicit any, strict null checks). ✓/□
+- Enable strict TypeScript options (no implicit any, strict null checks). ✓ (tsconfig.json strict settings already enabled)
 - ESLint/Prettier configuration aligned with Angular and signals. ✓/□
 - NPM scripts for build, serve, test, e2e, lint. ✓/□
 
