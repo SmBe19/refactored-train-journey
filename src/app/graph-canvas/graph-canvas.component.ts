@@ -3,6 +3,7 @@ import { ScheduleService } from '../services/schedule.service';
 import { FileParserService } from '../services/file-parser.service';
 import { SeriesVisibilityService } from '../services/series-visibility.service';
 import { GraphSeries } from '../../domain/types';
+import { TimeWindowService } from '../services/time-window.service';
 
 @Component({
   selector: 'app-graph-canvas',
@@ -119,6 +120,7 @@ export class GraphCanvasComponent {
   private readonly schedule = inject(ScheduleService);
   private readonly files = inject(FileParserService);
   private readonly visibility = inject(SeriesVisibilityService);
+  private readonly timeWindow = inject(TimeWindowService);
 
   // Basic layout
   protected readonly width = 800;
@@ -214,6 +216,11 @@ export class GraphCanvasComponent {
   }
 
   private yDomain(): [number, number] {
+    const sel = this.timeWindow.window();
+    if (sel) {
+      return [sel.min, sel.max];
+    }
+    // auto-fit from series if no selection
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
     for (const s of this.series()) {

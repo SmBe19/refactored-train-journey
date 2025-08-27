@@ -3,12 +3,13 @@ import { ErrorListComponent } from '../error-list/error-list.component';
 import { FileDropComponent } from '../file-drop/file-drop.component';
 import { GraphCanvasComponent } from '../graph-canvas/graph-canvas.component';
 import { LegendComponent } from '../legend/legend.component';
+import { ToolbarComponent } from '../toolbar/toolbar.component';
 
 @Component({
   selector: 'app-graph-page',
   // Standalone by default (do not set standalone: true per guidelines)
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ErrorListComponent, FileDropComponent, GraphCanvasComponent, LegendComponent],
+  imports: [ErrorListComponent, FileDropComponent, GraphCanvasComponent, LegendComponent, ToolbarComponent],
   host: {
     class: 'graph-page',
   },
@@ -24,6 +25,7 @@ import { LegendComponent } from '../legend/legend.component';
 
       <section class="graph-page__panel" aria-labelledby="graphTitle">
         <h3 id="graphTitle" class="graph-page__panel-title">Graph</h3>
+        <app-toolbar />
         <app-graph-canvas />
       </section>
 

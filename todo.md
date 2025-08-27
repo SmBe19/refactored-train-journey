@@ -2,7 +2,7 @@
 
 This document enumerates the tasks required to implement the Angular application described in README.md. It follows the provided guidelines (standalone components by default, signals for state, strict typing, OnPush change detection, native control flow, etc.).
 
-Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series based on visibility.
+Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes and polyline rendering of series from ScheduleService. Integrated into GraphPage. Added vertical grid lines at topology indices when no explicit stop distances are provided, x-axis stop labels (when index-based), y-axis ticks with labels, and axis titles. Added LegendComponent with per-series visibility toggles via SeriesVisibilityService; GraphCanvas now filters series by visibility. Persisted series visibility toggles in localStorage so user choices survive reloads. Added ToolbarComponent with Export SVG and Export JSON actions. Implemented TimeWindowService with localStorage persistence and wired Y-axis time range selection into GraphCanvas; added Fit/Zoom In/Zoom Out/Reset controls in Toolbar.
 
 ## 1. Requirements and Scope
 - Clarify units and conventions:
@@ -80,9 +80,9 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - If a line has stops not in topology, skip those points. ✓
 - Rendering:
   - Choose rendering approach: SVG for clarity/scalability; Canvas optional later for very large datasets. ✓
-  - Implement pan/zoom (optional v1: vertical scroll, time window selection). □
+  - Implement pan/zoom (optional v1: vertical scroll, time window selection). ✓ (basic time window selection via toolbar buttons)
   - Draw station grid lines at topology indices when no explicit stop distances are provided and label axes (x: stop names when index-based, y: time ticks). ✓
-  - Color-code lines/runs; legend. □
+  - Color-code lines/runs; legend. ✓
 
 ## 7. Angular Application Architecture
 - Routing (lazy-loaded feature):
@@ -94,7 +94,7 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - `ScheduleService` for computing schedules and series. ✓
   - `ColorService` to assign colors per line/run. ✓
 - State management (signals):
-  - Signals for: loaded train lines, topology, validation errors, derived graph series, selected time window. ✓/□
+  - Signals for: loaded train lines, topology, validation errors, derived graph series, selected time window. ✓
   - Use `computed()` for derived series from raw inputs. ✓
   - Never use `mutate`; use `set`/`update`. ✓
 - Components (standalone, OnPush, small responsibilities, inline templates where small):
@@ -107,7 +107,10 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - `ErrorListComponent`: shows parsing/validation errors. ✓ (implemented and integrated into GraphPage)
   - `GraphCanvasComponent` (SVG): renders axis, grid, and series. ✓ (basic axes + series rendering; grid lines for topology indices when no distances)
   - `LegendComponent`: color legend and toggles per line/run. ✓ (added LegendComponent and SeriesVisibilityService; GraphCanvas filters series by visibility)
-  - `ToolbarComponent`: controls (zoom, time range, export). □
+  - `ToolbarComponent`: controls (zoom, time range, export).
+    - Export actions (SVG, JSON). ✓
+    - Zoom controls. ✓
+    - Time range selection. ✓
 - Host bindings via `host` in decorators (avoid HostBinding/HostListener). ✓/□
 - Use `NgOptimizedImage` for static images if any (logos), avoiding base64 inline. ✓/□
 - Templates:
@@ -123,10 +126,13 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
   - Show file names and types; validate on load and on each edit; show errors with file/line context. ✓/□ (errors list shows file and line; file names shown in loader; file "types" still pending)
 - Graph UX:
   - Tooltips on hover showing stop, time, line/run name. ✓/□
-  - Keyboard navigation for panning/zooming; focus management. ✓/□
+  - Keyboard navigation for panning/zooming; focus management. □ (follow-up: map +/- for zoom, arrow keys for pan; ensure focusable region)
   - High-contrast color palette; ARIA roles/labels for interactive elements. ✓/□
 - Loading/export:
   - Allow exporting current graph as SVG/PNG; export parsed data as JSON for debugging. ✓/□
+    - Export SVG. ✓
+    - Export JSON (series). ✓
+    - Export PNG. □
 
 ## 9. Performance and Robustness
 - Efficient parsing (chunked for big files if needed). ✓/□
@@ -140,7 +146,7 @@ Recent update (2025-08-27): Implemented GraphCanvasComponent with basic SVG axes
     - Implemented via localStorage hydration/persist in FileDropComponent (key: train-graph-viewer:v1). ✓
   - Prefer IndexedDB for larger text blobs; fallback to localStorage if simplicity is acceptable for v1. ✓/□
     - v1 uses localStorage with try/catch; follow-up to migrate to IndexedDB for large files/quota resilience. □
-  - Also persist UI state (last selected time window, toggles, graph options). ✓/□ (series visibility toggles exist; persistence follow-up pending)
+  - Also persist UI state (last selected time window, toggles, graph options). ✓ (series visibility toggles exist; time window persisted under key train-graph-viewer:v1:time-window)
 
 ## 11. Testing Strategy
 - Unit tests:
