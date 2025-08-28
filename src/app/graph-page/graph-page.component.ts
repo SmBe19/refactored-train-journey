@@ -84,9 +84,13 @@ import { HelpExamplesComponent } from '../help-examples/help-examples.component'
       .split__right app-graph-canvas { flex: 1 1 auto; min-height: 0; }
 
       @media (max-width: 800px) {
-        .split { flex-direction: column; height: auto; }
-        .split__left { width: auto !important; max-width: none; }
-        .split__right { display: block; overflow: auto; }
+        /* Allow the whole page to scroll and stack panes vertically */
+        :host { position: static; inset: auto; height: auto; padding: .75rem; }
+        .graph-page__container { height: auto; min-height: 0; display: block; }
+        .split { flex-direction: column; height: auto; overflow: visible; }
+        .split__left { width: auto !important; max-width: none; overflow: visible; }
+        .split__right { display: block; overflow: visible; }
+        .split__right app-graph-canvas { min-height: 50vh; }
         .split__separator { display: none; }
       }
     `,
