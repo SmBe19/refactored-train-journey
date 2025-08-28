@@ -340,7 +340,7 @@ export class GraphCanvasComponent {
           min: this.dragStartWindowX.min + deltaDist,
           max: this.dragStartWindowX.max + deltaDist,
         };
-        this.xWindow.setWindow(nextX);
+        this.xWindow.setWindow(this.clampXWindow(nextX));
       }
     }
   }
@@ -398,25 +398,25 @@ export class GraphCanvasComponent {
     }
     if (key === 'ArrowLeft') {
       this.ensureXWindow();
-      this.xWindow.pan(-(shift ? panLargeX : panSmallX));
+      this.panXClamped(-(shift ? panLargeX : panSmallX));
       ev.preventDefault();
       return;
     }
     if (key === 'ArrowRight') {
       this.ensureXWindow();
-      this.xWindow.pan(shift ? panLargeX : panSmallX);
+      this.panXClamped(shift ? panLargeX : panSmallX);
       ev.preventDefault();
       return;
     }
     if (key === '[') {
       this.ensureXWindow();
-      this.xWindow.zoom(0.8); // zoom in X
+      this.zoomXClamped(0.8); // zoom in X
       ev.preventDefault();
       return;
     }
     if (key === ']') {
       this.ensureXWindow();
-      this.xWindow.zoom(1.25); // zoom out X
+      this.zoomXClamped(1.25); // zoom out X (limited)
       ev.preventDefault();
       return;
     }
@@ -427,7 +427,7 @@ export class GraphCanvasComponent {
     const factor = ev.deltaY > 0 ? 1.1 : 0.9; // zoom out on wheel down, in on wheel up
     if (ev.shiftKey) {
       this.ensureXWindow();
-      this.xWindow.zoom(factor);
+      this.zoomXClamped(factor);
       ev.preventDefault();
       return;
     }
@@ -435,6 +435,22 @@ export class GraphCanvasComponent {
     this.ensureYWindow();
     this.timeWindow.zoom(factor);
     ev.preventDefault();
+  }
+
+  private panXClamped(delta: number): void {
+    const win = this.xWindow.window();
+    if (!win) return;
+    const next: XWindow = { min: win.min + delta, max: win.max + delta };
+    this.xWindow.setWindow(this.clampXWindow(next));
+  }
+
+  private zoomXClamped(factor: number): void {
+    const win = this.xWindow.window();
+    if (!win) return;
+    const center = (win.min + win.max) / 2;
+    const half = ((win.max - win.min) / 2) * factor;
+    const next: XWindow = { min: center - half, max: center + half };
+    this.xWindow.setWindow(this.clampXWindow(next));
   }
 
   // Return true if the keyboard event originated from an editable control where typing should not trigger graph shortcuts
@@ -549,6 +565,45 @@ export class GraphCanvasComponent {
     const sel = this.xWindow.window();
     if (sel) return [sel.min, sel.max];
     return this.xDomainAuto();
+  }
+
+  // Clamp an X window to the auto domain (prevents panning outside and zooming out past full extent)
+  private clampXWindow(win: XWindow): XWindow {
+    const [amin, amax] = this.xDomainAuto();
+    let min = win.min;
+    let max = win.max;
+    const aSpan = amax - amin;
+    const span = max - min;
+    if (!(aSpan > 0)) {
+      // Degenerate; fallback to auto domain
+      return { min: amin, max: amax };
+    }
+    // Do not allow span to exceed available auto domain
+    let clampedSpan = Math.min(span, aSpan);
+    if (!(clampedSpan > 0)) clampedSpan = aSpan / 1000; // avoid zero/negative
+    // Recenter around original center but clamp to bounds
+    const center = (min + max) / 2;
+    min = center - clampedSpan / 2;
+    max = center + clampedSpan / 2;
+    // Shift to fit if outside bounds
+    if (min < amin) {
+      const shift = amin - min;
+      min += shift;
+      max += shift;
+    }
+    if (max > amax) {
+      const shift = max - amax;
+      min -= shift;
+      max -= shift;
+    }
+    // Final clamp in case of numerical drift
+    min = Math.max(amin, min);
+    max = Math.min(amax, max);
+    // Ensure min < max
+    if (max <= min) {
+      return { min: amin, max: amax };
+    }
+    return { min, max };
   }
 
   private xDomainAuto(): [number, number] {

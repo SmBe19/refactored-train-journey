@@ -197,17 +197,24 @@ export class ToolbarComponent {
   // ---- Horizontal (X) zoom controls ----
   zoomInX(): void {
     this.ensureXWindow();
-    this.xWindow.zoom(0.5);
+    this.zoomXClamped(0.5);
   }
 
   zoomOutX(): void {
     this.ensureXWindow();
-    this.xWindow.zoom(2);
+    this.zoomXClamped(2);
   }
 
   private ensureXWindow(): void {
     if (this.xWindow.window()) return;
-    // initialize from series distances
+    const [min, max] = this.xAutoDomain();
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      this.xWindow.setWindow({ min, max });
+    }
+  }
+
+  private xAutoDomain(): [number, number] {
+    // Use the same auto-fit rules as the canvas: pad when all distances are identical
     const series = this.series();
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
@@ -218,8 +225,45 @@ export class ToolbarComponent {
         if (d > max) max = d;
       }
     }
-    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
-      this.xWindow.setWindow({ min, max });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
+    if (min === max) return [min - 1, max + 1];
+    return [min, max];
+  }
+
+  private clampXWindow(win: { min: number; max: number }): { min: number; max: number } {
+    const [amin, amax] = this.xAutoDomain();
+    let min = win.min;
+    let max = win.max;
+    const aSpan = amax - amin;
+    const span = max - min;
+    if (!(aSpan > 0)) return { min: amin, max: amax };
+    let clampedSpan = Math.min(span, aSpan);
+    if (!(clampedSpan > 0)) clampedSpan = aSpan / 1000;
+    const center = (min + max) / 2;
+    min = center - clampedSpan / 2;
+    max = center + clampedSpan / 2;
+    if (min < amin) {
+      const shift = amin - min;
+      min += shift;
+      max += shift;
     }
+    if (max > amax) {
+      const shift = max - amax;
+      min -= shift;
+      max -= shift;
+    }
+    min = Math.max(amin, min);
+    max = Math.min(amax, max);
+    if (max <= min) return { min: amin, max: amax };
+    return { min, max };
+  }
+
+  private zoomXClamped(factor: number): void {
+    const win = this.xWindow.window();
+    if (!win) return;
+    const center = (win.min + win.max) / 2;
+    const half = ((win.max - win.min) / 2) * factor;
+    const next = { min: center - half, max: center + half };
+    this.xWindow.setWindow(this.clampXWindow(next));
   }
 }
