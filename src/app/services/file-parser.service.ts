@@ -112,12 +112,57 @@ export class FileParserService {
     return warns;
   });
 
+  // Warn when total natural runtime of a train line exceeds its stated period
+  readonly periodOverrunWarnings = computed<ParseError[]>(() => {
+    const warns: ParseError[] = [];
+    for (const { fileName, spec } of this.parsedTrainLines()) {
+      const { meta, segments } = spec;
+      // Compute natural runtime from start until last departure without enforcing period idle
+      let total = 0; // seconds as number
+      const occurrence = new Map<string, number>();
+      segments.forEach((seg, idx) => {
+        const occ = (occurrence.get(seg.stop) ?? 0) + 1;
+        occurrence.set(seg.stop, occ);
+        const baseExtra = (meta.extraStopTimes[seg.stop] ?? (0 as unknown as number)) as number;
+        const occExtra = (meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ] ?? (0 as unknown as number)) as number;
+        const dwell = idx === 0 ? 0 : ((meta.defaultStopTime as unknown as number) + baseExtra + occExtra);
+        const travel = (seg.travelToNext as unknown as number) || 0;
+        total += dwell + travel;
+      });
+      const period = meta.period as unknown as number;
+      if (total > period) {
+        const over = total - period;
+        warns.push({
+          file: fileName,
+          message: `Warning: total runtime ${FileParserService.formatDuration(total)} exceeds period ${FileParserService.formatDuration(period)} by ${FileParserService.formatDuration(over)}`,
+        });
+      }
+    }
+    return warns;
+  });
+
   readonly allErrors = computed<ParseError[]>(() => [
     ...this.trainLineErrors(),
     ...this.topologyErrors(),
     ...this.crossFileErrors(),
     ...this.extraStopTimesWarnings(),
+    ...this.periodOverrunWarnings(),
   ]);
+
+  // Local helper to format seconds into HH:MM:SS
+  // Keeps logic here to avoid a broader public API change
+  // Accepts a number in seconds, returns zero-padded HH:MM:SS
+  // Note: durations can exceed 24h; we don't wrap.
+  private static formatDuration(totalSeconds: number): string {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const hh = Math.floor(s / 3600);
+    const mm = Math.floor((s % 3600) / 60);
+    const ss = s % 60;
+    const hStr = String(hh).padStart(2, '0');
+    const mStr = String(mm).padStart(2, '0');
+    const sStr = String(ss).padStart(2, '0');
+    return `${hStr}:${mStr}:${sStr}`;
+  }
 
   // Public API to set inputs
   setTrainLineFiles(files: { fileName: string; text: string }[]): void {
