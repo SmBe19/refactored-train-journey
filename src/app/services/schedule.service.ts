@@ -36,7 +36,7 @@ export class ScheduleService {
       const runs = computeRunsForLine(spec);
       for (const run of runs) {
         const id = `${run.lineName}@${formatTimeOfDay(run.runStart as unknown as number)}`;
-        const color = this.colors.colorFor(id, run.lineName);
+        const color = this.colors.colorFor(id, run.lineName, spec.meta.baseColor);
         const points = computeGraphPoints(spec, topo, run);
         if (points.length >= 2) {
           series.push({ id, color, points });

@@ -10,13 +10,14 @@ Specify the paths of the train lines using stops and the required time between s
 ## Train lines
 Each train line is specified by a text file, containing alternating lines of stop names and travel times (`HH:MM:SS` or `MM:SS`). At the top, in a yaml formatted frontmatter. A train line represents a certain train type with its characteristics running along a certain route. For example, if you have multiple trains with different maximal speeds, you have to specify them in separate train lines.
 
-The frontmatter contains the following fields: `name`, `default_stop_time`, `period`, `runs`, `extra_stop_times`.
+The frontmatter contains the following fields: `name`, `default_stop_time`, `period`, `runs`, `extra_stop_times`, `base_color`.
 
 - `name` is the name of the train line.
 - `default_stop_time` is the default time the train stops at each stop (`HH:MM:SS` or `MM:SS`).
 - `period` is the target duration of the whole train line. If the train is too fast, it will wait at the last stop until the end of the period (`HH:MM:SS` or `MM:SS`).
 - `runs` is a list of departure times for the train line (`HH:MM:SS` or `HH:MM`).
 - `extra_stop_times` is a map of stop names to extra dwell time added on top of `default_stop_time` (`HH:MM:SS` or `MM:SS`). You can target a specific occurrence of a stop (when the same stop appears multiple times in a line) by using the syntax `StopName#N` where `N` is the 1-based occurrence index. For example: `Central#2: 00:01:00` applies only to the second time "Central" appears. A plain key without `#N` (e.g., `Central: 00:00:30`) applies to all occurrences. When both are present, the occurrence-specific value is added on top of the plain extra time for that occurrence.
+- `base_color` lets you specify a custom base color for all runs of this line. It must be a hex color in the form `#RRGGBB` or `RRGGBB`. Note: in YAML, `#` starts a comment, so either quote the value (`"#1F77B4"`) or omit the `#` (e.g., `1F77B4`). All runs of the same line share this base color, and each run gets a stable variation (slight hue, saturation, and lightness shifts) for clearer differentiation.
 
 
 Example of per-occurrence extra stop time:
@@ -59,6 +60,7 @@ The topology (the list of stops which should be displayed in the graph) is speci
   - X axis uses stop order indices (0..N-1) and labels each vertical grid line with the stop name.
   - Y axis is time and increases downward (top = earlier time, bottom = later time), matching SVG coordinate space. Ticks show MM:SS until 1 hour, then HH:MM.
 - Multiple runs: every departure in `runs` is rendered as its own colored series. The legend shows one toggle per run (LineName@StartTime).
+- Colors: All runs of the same line share the same base color. Each run is rendered with a stable variation of that base color (slight hue, saturation, and lightness shifts) for clearer differentiation. You can override the base color per line via the optional `base_color` frontmatter field.
 - Period handling: if a run completes early, it idles at the last stop until `runStart + period` (this affects its final timestamp on the graph).
 
 ## Usage

@@ -77,6 +77,7 @@ period: 01:00:00
 runs:
   - 06:00
   - 06:30
+base_color: 1F77B4
 extra_stop_times:
   Meadow: 00:00:30
   Meadow#2: 00:01:00

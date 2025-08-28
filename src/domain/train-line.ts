@@ -157,6 +157,30 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     }
   }
 
+  // base_color (optional)
+  let baseColor: string | undefined;
+  const baseColorRaw = obj['base_color'] ?? obj['baseColor']; // accept both snake_case and camelCase
+  if (baseColorRaw != null) {
+    let s = String(baseColorRaw).trim();
+    // Normalize common variants:
+    // - allow missing leading '#'
+    // - allow 3-digit hex (#RGB) and expand to #RRGGBB
+    // - case-insensitive
+    if (!s.startsWith('#')) s = `#${s}`;
+    const m3 = s.match(/^#([0-9a-fA-F]{3})$/);
+    const m6 = s.match(/^#([0-9a-fA-F]{6})$/);
+    if (m6) {
+      baseColor = `#${m6[1].toUpperCase()}`;
+    } else if (m3) {
+      const r = m3[1][0];
+      const g = m3[1][1];
+      const b = m3[1][2];
+      baseColor = `#${(r + r + g + g + b + b).toUpperCase()}`;
+    } else {
+      errors.push({ file: fileName, line: baseLine, message: `base_color must be a hex color like #RRGGBB or #RGB` });
+    }
+  }
+
   // extra_stop_times
   const estRaw = obj['extra_stop_times'];
   const extraStopTimes: Record<string, TimeSeconds> = {};
@@ -206,6 +230,7 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     defaultStopTime,
     period,
     runs,
+    baseColor,
     extraStopTimes,
     occurrenceExtraStopTimes: Object.keys(occurrenceExtraStopTimes).length ? occurrenceExtraStopTimes : undefined,
   };

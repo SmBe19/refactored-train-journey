@@ -15,6 +15,8 @@ export interface TrainLineMeta {
   defaultStopTime: TimeSeconds;
   period: TimeSeconds;
   runs: TimeOfDaySeconds[];
+  // Optional custom base color for this line in #RRGGBB format
+  baseColor?: string;
   // Generic extra dwell time applied to all occurrences of a stop
   extraStopTimes: Record<StopId, TimeSeconds>;
   // Occurrence-specific extra dwell times, 1-based index per occurrence in the line definition
