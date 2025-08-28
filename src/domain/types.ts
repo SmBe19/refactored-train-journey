@@ -15,7 +15,10 @@ export interface TrainLineMeta {
   defaultStopTime: TimeSeconds;
   period: TimeSeconds;
   runs: TimeOfDaySeconds[];
+  // Generic extra dwell time applied to all occurrences of a stop
   extraStopTimes: Record<StopId, TimeSeconds>;
+  // Occurrence-specific extra dwell times, 1-based index per occurrence in the line definition
+  occurrenceExtraStopTimes?: Record<StopId, Record<number, TimeSeconds>>;
 }
 
 export interface TrainLineSegment {

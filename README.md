@@ -16,7 +16,38 @@ The frontmatter contains the following fields: `name`, `default_stop_time`, `per
 - `default_stop_time` is the default time the train stops at each stop (`HH:MM:SS` or `MM:SS`).
 - `period` is the target duration of the whole train line. If the train is too fast, it will wait at the last stop until the end of the period (`HH:MM:SS` or `MM:SS`).
 - `runs` is a list of departure times for the train line (`HH:MM:SS` or `HH:MM`).
-- `extra_stop_times` is a map of stop names to extra time the train stops at that stop (`HH:MM:SS` or `MM:SS`). This is in addition to the default stop time. If a stop is not specified in this map, no extra time is added.
+- `extra_stop_times` is a map of stop names to extra dwell time added on top of `default_stop_time` (`HH:MM:SS` or `MM:SS`). You can target a specific occurrence of a stop (when the same stop appears multiple times in a line) by using the syntax `StopName#N` where `N` is the 1-based occurrence index. For example: `Central#2: 00:01:00` applies only to the second time "Central" appears. A plain key without `#N` (e.g., `Central: 00:00:30`) applies to all occurrences. When both are present, the occurrence-specific value is added on top of the plain extra time for that occurrence.
+
+
+Example of per-occurrence extra stop time:
+
+```
+---
+name: Local A
+default_stop_time: 00:00:30
+period: 01:00:00
+runs:
+  - 06:00
+extra_stop_times:
+  Meadow: 00:00:30   # applies to all occurrences of Meadow
+  Meadow#2: 00:01:00 # additional extra time for the 2nd occurrence only
+---
+Central
+02:00
+East Side
+02:30
+Meadow
+01:45
+Hilltop
+01:45
+Meadow
+02:30
+East Side
+02:00
+Central
+```
+
+In this example, the second time the train stops at Meadow it will dwell for default_stop_time + Meadow (00:00:30) + Meadow#2 (00:01:00).
 
 All durations (e.g. stop times and travel times) are in the format `HH:MM:SS` or `MM:SS`. Time of day (e.g. runs) are in the format `HH:MM:SS` or `HH:MM`.
 

@@ -78,15 +78,22 @@ runs:
   - 06:00
   - 06:30
 extra_stop_times:
-  Central: 00:00:30
+  Meadow: 00:00:30
+  Meadow#2: 00:01:00
 ---
 Central
 02:00
 East Side
-03:30
+02:30
 Meadow
 01:45
-Hilltop`;
+Hilltop
+01:45
+Meadow
+02:30
+East Side
+02:00
+Central`;
 
   protected readonly topoExample: string = `# Topology: one stop per line
 Central

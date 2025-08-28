@@ -56,10 +56,17 @@ function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
   for (const start of meta.runs) {
     let t: TimeSeconds = start as unknown as TimeSeconds; // start is branded TimeOfDaySeconds; timeline is consistent in seconds
 
+    const occurrence = new Map<string, number>();
+
     const schedule = spec.segments.map((seg, idx) => {
       const arrival = t;
+      // Track 1-based occurrence index for this stop along the line
+      const occ = (occurrence.get(seg.stop) ?? 0) + 1;
+      occurrence.set(seg.stop, occ);
       // No dwell at the initial stop; ignore extra_stop_times for the first stop
-      const dwell = idx === 0 ? (0 as TimeSeconds) : add(meta.defaultStopTime, meta.extraStopTimes[seg.stop] ?? (0 as unknown as TimeSeconds));
+      const occExtra = meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ] ?? (0 as unknown as TimeSeconds);
+      const baseExtra = meta.extraStopTimes[seg.stop] ?? (0 as unknown as TimeSeconds);
+      const dwell = idx === 0 ? (0 as TimeSeconds) : add(meta.defaultStopTime, add(baseExtra, occExtra));
       const departure = add(arrival, dwell);
 
       // Advance time to next stop by travel time

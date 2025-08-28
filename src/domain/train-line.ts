@@ -57,6 +57,14 @@ export function parseTrainLine(text: string, fileName: string = 'train-line.txt'
       errors.push({ file: fileName, message: `extra_stop_times contains unknown stop "${key}"` });
     }
   }
+  // Validate occurrenceExtraStopTimes base stops exist
+  if (meta.occurrenceExtraStopTimes) {
+    for (const base of Object.keys(meta.occurrenceExtraStopTimes)) {
+      if (!stopSet.has(base)) {
+        errors.push({ file: fileName, message: `extra_stop_times contains unknown stop "${base}" (from occurrence-specific key)` });
+      }
+    }
+  }
 
   if (errors.length > 0) return err(errors);
 
@@ -152,14 +160,36 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
   // extra_stop_times
   const estRaw = obj['extra_stop_times'];
   const extraStopTimes: Record<string, TimeSeconds> = {};
+  const occurrenceExtraStopTimes: Record<string, Record<number, TimeSeconds>> = {};
   if (estRaw != null) {
     if (typeof estRaw !== 'object' || estRaw == null || Array.isArray(estRaw)) {
       errors.push({ file: fileName, line: baseLine, message: 'extra_stop_times must be a map' });
     } else {
-      for (const [k, v] of Object.entries(estRaw as Record<string, unknown>)) {
+      for (const [rawKey, v] of Object.entries(estRaw as Record<string, unknown>)) {
         const d = parseDuration(String(v));
-        if (!d.ok) errors.push({ file: fileName, line: baseLine, message: `Invalid extra_stop_times for ${k}: ${d.error}` });
-        else extraStopTimes[k] = d.value;
+        if (!d.ok) {
+          errors.push({ file: fileName, line: baseLine, message: `Invalid extra_stop_times for ${rawKey}: ${d.error}` });
+          continue;
+        }
+        const m = String(rawKey).match(/^(.*?)(?:#(\d+))?$/);
+        if (m) {
+          const base = m[1].trim();
+          const idxStr = m[2];
+          if (idxStr) {
+            const idx = Number(idxStr);
+            if (!Number.isInteger(idx) || idx <= 0) {
+              errors.push({ file: fileName, line: baseLine, message: `extra_stop_times key "${rawKey}": occurrence index must be a positive integer` });
+            } else {
+              if (!occurrenceExtraStopTimes[base]) occurrenceExtraStopTimes[base] = {};
+              occurrenceExtraStopTimes[base][idx] = d.value;
+            }
+          } else {
+            extraStopTimes[base] = d.value;
+          }
+        } else {
+          // Fallback: treat as base
+          extraStopTimes[String(rawKey)] = d.value;
+        }
       }
     }
   }
@@ -177,6 +207,7 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     period,
     runs,
     extraStopTimes,
+    occurrenceExtraStopTimes: Object.keys(occurrenceExtraStopTimes).length ? occurrenceExtraStopTimes : undefined,
   };
   return ok(meta);
 }

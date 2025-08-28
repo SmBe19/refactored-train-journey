@@ -95,6 +95,19 @@ export class FileParserService {
           });
         }
       }
+      // Also occurrence-specific map
+      const occ = spec.meta.occurrenceExtraStopTimes ?? {};
+      for (const [stop, byIdx] of Object.entries(occ)) {
+        for (const [idxStr, dur] of Object.entries(byIdx)) {
+          const seconds = (dur as unknown as number);
+          if (seconds === 0) {
+            warns.push({
+              file: fileName,
+              message: `Warning: extra_stop_times for stop "${stop}#${idxStr}" is 0s and has no effect`,
+            });
+          }
+        }
+      }
     }
     return warns;
   });
