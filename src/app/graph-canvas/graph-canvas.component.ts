@@ -4,6 +4,7 @@ import { FileParserService } from '../services/file-parser.service';
 import { SeriesVisibilityService } from '../services/series-visibility.service';
 import { GraphSeries } from '../../domain/types';
 import { TimeWindow, TimeWindowService } from '../services/time-window.service';
+import { XWindow, XWindowService } from '../services/x-window.service';
 
 @Component({
   selector: 'app-graph-canvas',
@@ -14,7 +15,7 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
     role: 'img',
     'aria-label': 'Train time-distance graph',
     tabindex: '0',
-    'aria-keyshortcuts': '+, -, ArrowUp, ArrowDown, PageUp, PageDown',
+    'aria-keyshortcuts': '+, -, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, PageUp, PageDown, [, ]',
     '(keydown)': 'onKeydown($event)',
     '(document:keydown)': 'onKeydown($event)',
     '(document:mousemove)': 'onDocumentMouseMove($event)',
@@ -32,6 +33,7 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
       (mousemove)="onPointerMove($event)"
       (mouseleave)="onPointerLeave()"
       (mousedown)="onDragStart($event)"
+      (wheel)="onWheel($event)"
       [style.cursor]="dragging() ? 'grabbing' : 'grab'"
     >
       <title id="graphTitle">Time-Distance Graph</title>
@@ -172,6 +174,7 @@ export class GraphCanvasComponent {
   private readonly files = inject(FileParserService);
   private readonly visibility = inject(SeriesVisibilityService);
   private readonly timeWindow = inject(TimeWindowService);
+  private readonly xWindow = inject(XWindowService);
 
   // Basic layout
   protected readonly width = 800;
@@ -218,7 +221,9 @@ export class GraphCanvasComponent {
   // Drag state
   protected readonly dragging = signal(false);
   private dragStartY = 0;
-  private dragStartWindow: TimeWindow | null = null;
+  private dragStartX = 0;
+  private dragStartWindowY: TimeWindow | null = null;
+  private dragStartWindowX: XWindow | null = null;
   private dragSvgEl: SVGSVGElement | null = null;
 
   onPointerMove(ev: MouseEvent): void {
@@ -275,45 +280,76 @@ export class GraphCanvasComponent {
   }
 
   onDragStart(ev: MouseEvent): void {
-    // Start dragging to pan vertically (time axis)
+    // Start dragging to pan the view. No modifiers are required; we support panning both axes.
     const svg = ev.currentTarget as SVGSVGElement | null;
     if (!svg) return;
-    this.ensureWindow();
-    const win = this.timeWindow.window();
-    // If still no window (no data?), do nothing
-    if (!win) return;
-    this.dragging.set(true);
+
+    // Ensure both windows exist (initialize from auto domains if needed)
+    this.ensureYWindow();
+    this.ensureXWindow();
+
+    const winY = this.timeWindow.window();
+    const winX = this.xWindow.window();
+    // If neither axis has a valid window (e.g., no data), abort
+    if (!winY && !winX) return;
+
+    // Capture drag start positions and windows
     this.dragStartY = ev.clientY;
-    this.dragStartWindow = { ...win } as TimeWindow;
+    this.dragStartX = ev.clientX;
+    this.dragStartWindowY = winY ? { ...winY } as TimeWindow : null;
+    this.dragStartWindowX = winX ? { ...winX } as XWindow : null;
+
     this.dragSvgEl = svg;
-    // also hide hover to avoid flicker
-    this.hoverActive.set(false);
-    // prevent default to avoid text selection
-    ev.preventDefault();
+    this.dragging.set(true);
+    this.hoverActive.set(false); // avoid flicker during drag
+    ev.preventDefault(); // avoid text selection
   }
 
   onDocumentMouseMove(ev: MouseEvent): void {
-    if (!this.dragging() || !this.dragStartWindow || !this.dragSvgEl) return;
+    if (!this.dragging() || !this.dragSvgEl) return;
     const rect = this.dragSvgEl.getBoundingClientRect();
-    const scaleY = this.height / rect.height; // CSS px -> SVG units
-    const dyCss = ev.clientY - this.dragStartY;
-    const dySvg = dyCss * scaleY;
-    const h = this.height - this.margin.top - this.margin.bottom;
-    const range = this.dragStartWindow.max - this.dragStartWindow.min;
-    if (!(range > 0 && h > 0)) return;
-    // Invert to make content follow the pointer: dragging down moves content down (earlier times)
-    const deltaSeconds = -dySvg * (range / h);
-    const next: TimeWindow = {
-      min: this.dragStartWindow.min + deltaSeconds,
-      max: this.dragStartWindow.max + deltaSeconds,
-    };
-    this.timeWindow.setWindow(next);
+
+    // Pan Y-axis if we captured a Y window at drag start
+    if (this.dragStartWindowY) {
+      const scaleY = this.height / rect.height; // CSS px -> SVG units
+      const dyCss = ev.clientY - this.dragStartY;
+      const dySvg = dyCss * scaleY;
+      const h = this.height - this.margin.top - this.margin.bottom;
+      const rangeY = this.dragStartWindowY.max - this.dragStartWindowY.min;
+      if (rangeY > 0 && h > 0) {
+        // Invert so content follows pointer
+        const deltaSeconds = -dySvg * (rangeY / h);
+        const nextY: TimeWindow = {
+          min: this.dragStartWindowY.min + deltaSeconds,
+          max: this.dragStartWindowY.max + deltaSeconds,
+        };
+        this.timeWindow.setWindow(nextY);
+      }
+    }
+
+    // Pan X-axis if we captured an X window at drag start
+    if (this.dragStartWindowX) {
+      const scaleX = this.width / rect.width; // CSS px -> SVG units
+      const dxCss = ev.clientX - this.dragStartX;
+      const dxSvg = dxCss * scaleX;
+      const w = this.width - this.margin.left - this.margin.right;
+      const rangeX = this.dragStartWindowX.max - this.dragStartWindowX.min;
+      if (rangeX > 0 && w > 0) {
+        const deltaDist = -dxSvg * (rangeX / w);
+        const nextX: XWindow = {
+          min: this.dragStartWindowX.min + deltaDist,
+          max: this.dragStartWindowX.max + deltaDist,
+        };
+        this.xWindow.setWindow(nextX);
+      }
+    }
   }
 
   onDocumentMouseUp(): void {
     if (!this.dragging()) return;
     this.dragging.set(false);
-    this.dragStartWindow = null;
+    this.dragStartWindowY = null;
+    this.dragStartWindowX = null;
     this.dragSvgEl = null;
   }
 
@@ -321,40 +357,84 @@ export class GraphCanvasComponent {
     // Ignore keyboard shortcuts when focus is in an editable element (e.g., textarea, input, contenteditable)
     if (this.isFromEditable(ev)) return;
 
-    // Enable keyboard pan/zoom of the time window
+    // Enable keyboard pan/zoom of the view
     const key = ev.key;
     const ctrlOrMeta = ev.ctrlKey || ev.metaKey;
     const shift = ev.shiftKey;
 
-    // Determine actions. We consider common keys without requiring modifiers.
-    // Prevent default scrolling for handled keys.
-    const panSmall = 60; // seconds
-    const panLarge = 300; // seconds
+    // Y-axis pan increments (seconds)
+    const panSmallY = 60;
+    const panLargeY = 300;
+
+    // X-axis pan increments depend on current range for consistent feel
+    const [xmin, xmax] = this.xDomain();
+    const xRange = Math.max(1e-9, xmax - xmin);
+    const panSmallX = xRange / 20; // 5% of current view
+    const panLargeX = xRange / 4;  // 25% of current view
 
     if (key === '+' || key === '=' || (key === 'Add' && ctrlOrMeta)) {
-      this.ensureWindow();
-      this.timeWindow.zoom(0.8); // zoom in (20% tighter)
+      this.ensureYWindow();
+      this.timeWindow.zoom(0.8); // zoom in (20% tighter) on Y
       ev.preventDefault();
       return;
     }
     if (key === '-' || key === '_' || key === 'Subtract') {
-      this.ensureWindow();
-      this.timeWindow.zoom(1.25); // zoom out (25% wider)
+      this.ensureYWindow();
+      this.timeWindow.zoom(1.25); // zoom out (25% wider) on Y
       ev.preventDefault();
       return;
     }
     if (key === 'ArrowUp' || key === 'PageUp') {
-      this.ensureWindow();
-      this.timeWindow.pan(-(shift ? panLarge : panSmall));
+      this.ensureYWindow();
+      this.timeWindow.pan(-(shift ? panLargeY : panSmallY));
       ev.preventDefault();
       return;
     }
     if (key === 'ArrowDown' || key === 'PageDown') {
-      this.ensureWindow();
-      this.timeWindow.pan(shift ? panLarge : panSmall);
+      this.ensureYWindow();
+      this.timeWindow.pan(shift ? panLargeY : panSmallY);
       ev.preventDefault();
       return;
     }
+    if (key === 'ArrowLeft') {
+      this.ensureXWindow();
+      this.xWindow.pan(-(shift ? panLargeX : panSmallX));
+      ev.preventDefault();
+      return;
+    }
+    if (key === 'ArrowRight') {
+      this.ensureXWindow();
+      this.xWindow.pan(shift ? panLargeX : panSmallX);
+      ev.preventDefault();
+      return;
+    }
+    if (key === '[') {
+      this.ensureXWindow();
+      this.xWindow.zoom(0.8); // zoom in X
+      ev.preventDefault();
+      return;
+    }
+    if (key === ']') {
+      this.ensureXWindow();
+      this.xWindow.zoom(1.25); // zoom out X
+      ev.preventDefault();
+      return;
+    }
+  }
+
+  onWheel(ev: WheelEvent): void {
+    // Mouse wheel zoom: Shift + wheel => horizontal zoom, plain wheel => vertical zoom
+    const factor = ev.deltaY > 0 ? 1.1 : 0.9; // zoom out on wheel down, in on wheel up
+    if (ev.shiftKey) {
+      this.ensureXWindow();
+      this.xWindow.zoom(factor);
+      ev.preventDefault();
+      return;
+    }
+    // Default to vertical (time) zoom on wheel without modifiers
+    this.ensureYWindow();
+    this.timeWindow.zoom(factor);
+    ev.preventDefault();
   }
 
   // Return true if the keyboard event originated from an editable control where typing should not trigger graph shortcuts
@@ -378,12 +458,20 @@ export class GraphCanvasComponent {
     return isEditableElement(target as Element | null) || isEditableElement(active);
   }
 
-  private ensureWindow(): void {
+  private ensureYWindow(): void {
     if (this.timeWindow.window()) return;
     // If no selection is set, initialize using current auto-fit y-domain
     const [min, max] = this.yDomain();
     if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
       this.timeWindow.setWindow({ min, max });
+    }
+  }
+
+  private ensureXWindow(): void {
+    if (this.xWindow.window()) return;
+    const [min, max] = this.xDomainAuto();
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      this.xWindow.setWindow({ min, max });
     }
   }
 
@@ -458,6 +546,12 @@ export class GraphCanvasComponent {
   }
 
   private xDomain(): [number, number] {
+    const sel = this.xWindow.window();
+    if (sel) return [sel.min, sel.max];
+    return this.xDomainAuto();
+  }
+
+  private xDomainAuto(): [number, number] {
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
     for (const s of this.series()) {

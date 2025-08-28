@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ScheduleService } from '../services/schedule.service';
 import { TimeWindowService } from '../services/time-window.service';
+import { XWindowService } from '../services/x-window.service';
 
 @Component({
   selector: 'app-toolbar',
@@ -21,6 +22,9 @@ import { TimeWindowService } from '../services/time-window.service';
       <button type="button" class="toolbar__btn" (click)="zoomIn()" title="Zoom in (time)">Zoom In</button>
       <button type="button" class="toolbar__btn" (click)="zoomOut()" title="Zoom out (time)">Zoom Out</button>
       <button type="button" class="toolbar__btn" (click)="resetView()" title="Clear time range selection">Reset</button>
+      <span class="toolbar__spacer" aria-hidden="true"></span>
+      <button type="button" class="toolbar__btn" (click)="zoomInX()" title="Zoom in (horizontal)">Zoom In X</button>
+      <button type="button" class="toolbar__btn" (click)="zoomOutX()" title="Zoom out (horizontal)">Zoom Out X</button>
     </div>
   `,
   styles: [
@@ -48,6 +52,7 @@ import { TimeWindowService } from '../services/time-window.service';
 export class ToolbarComponent {
   private readonly schedule = inject(ScheduleService);
   private readonly timeWindow = inject(TimeWindowService);
+  private readonly xWindow = inject(XWindowService);
 
   // cache series as a computed for JSON export
   protected readonly series = computed(() => this.schedule.graphSeries());
@@ -187,5 +192,34 @@ export class ToolbarComponent {
 
   resetView(): void {
     this.timeWindow.reset();
+  }
+
+  // ---- Horizontal (X) zoom controls ----
+  zoomInX(): void {
+    this.ensureXWindow();
+    this.xWindow.zoom(0.5);
+  }
+
+  zoomOutX(): void {
+    this.ensureXWindow();
+    this.xWindow.zoom(2);
+  }
+
+  private ensureXWindow(): void {
+    if (this.xWindow.window()) return;
+    // initialize from series distances
+    const series = this.series();
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const s of series) {
+      for (const p of s.points) {
+        const d = p.distance;
+        if (d < min) min = d;
+        if (d > max) max = d;
+      }
+    }
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      this.xWindow.setWindow({ min, max });
+    }
   }
 }
