@@ -540,9 +540,10 @@ export class GraphCanvasComponent {
   private generateYTicks(): number[] {
     const [min, max] = this.yDomain();
     if (!(Number.isFinite(min) && Number.isFinite(max))) return [];
-    const count = 5;
+    const targetCount = 6;
     if (max === min) return [min];
-    const step = niceStep((max - min) / count);
+    const raw = (max - min) / targetCount;
+    const step = niceTimeStep(raw);
     const start = Math.ceil(min / step) * step;
     const ticks: number[] = [];
     for (let v = start; v <= max; v += step) ticks.push(v);
@@ -651,6 +652,23 @@ function niceStep(raw: number): number {
   let nice = 1;
   if (base > 5) nice = 10; else if (base > 2) nice = 5; else if (base > 1) nice = 2; else nice = 1;
   return nice * Math.pow(10, exp);
+}
+
+function niceTimeStep(rawSeconds: number): number {
+  // Predefined nice time steps in seconds: include common 1,2,5 and 10 multiples plus 15 and 30 mins/hours
+  if (!(rawSeconds > 0)) return 1;
+  const steps: number[] = [
+    1, 2, 5, 10, 15, 30,
+    60, 120, 300, 600, 900, 1800,
+    3600, 7200, 10800, 14400, 21600, 43200, 86400
+  ];
+  for (const s of steps) {
+    if (rawSeconds <= s) return s;
+  }
+  // If above our largest, scale by factors of 2 to keep it reasonable
+  let s = steps[steps.length - 1];
+  while (rawSeconds > s) s *= 2;
+  return s;
 }
 
 // format numeric distance compactly
