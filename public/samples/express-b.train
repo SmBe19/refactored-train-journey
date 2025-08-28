@@ -6,7 +6,7 @@ runs:
   - 06:10
   - 06:40
 repeat_runs: 1
-extra_stop_times: {}
+custom_stop_times: {}
 ---
 Central
 04:00

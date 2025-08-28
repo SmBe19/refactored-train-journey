@@ -10,18 +10,18 @@ Specify the paths of the train lines using stops and the required time between s
 ## Train lines
 Each train line is specified by a text file, containing alternating lines of stop names and travel times (`HH:MM:SS` or `MM:SS`). At the top, in a yaml formatted frontmatter. A train line represents a certain train type with its characteristics running along a certain route. For example, if you have multiple trains with different maximal speeds, you have to specify them in separate train lines.
 
-The frontmatter can contain the following fields: `name`, `default_stop_time`, `period`, `runs`, `repeat_runs`, `extra_stop_times`, `base_color`.
+The frontmatter can contain the following fields: `name`, `default_stop_time`, `period`, `runs`, `repeat_runs`, `custom_stop_times`, `base_color`.
 
 - `name` is the name of the train line.
 - `default_stop_time` is the default time the train stops at each stop (`HH:MM:SS` or `MM:SS`).
 - `period` is the target duration of the whole train line. If the train is too fast, it will wait at the last stop until the end of the period (`HH:MM:SS` or `MM:SS`).
 - `runs` is a list of departure times for the train line (`HH:MM:SS` or `HH:MM`).
 - `repeat_runs` optionally repeats each listed run additional times, spaced by the `period`. For example, `repeat_runs: 2` renders each run 3 times total at start, start+period, start+2*period.
-- `extra_stop_times` is a map of stop names to extra dwell time added on top of `default_stop_time` (`HH:MM:SS` or `MM:SS`). You can target a specific occurrence of a stop (when the same stop appears multiple times in a line) by using the syntax `StopName#N` where `N` is the 1-based occurrence index. For example: `Central#2: 00:01:00` applies only to the second time "Central" appears. A plain key without `#N` (e.g., `Central: 00:00:30`) applies to all occurrences. When both are present, the occurrence-specific value is added on top of the plain extra time for that occurrence.
+- `custom_stop_times` is a map of stop names to dwell time (`HH:MM:SS` or `MM:SS`). You can target a specific occurrence of a stop (when the same stop appears multiple times in a line) by using the syntax `StopName#N` where `N` is the 1-based occurrence index. For example: `Central#2: 00:01:00` applies only to the second time "Central" appears. A plain key without `#N` (e.g., `Central: 00:00:30`) applies to all occurrences. When both are present, the occurrence-specific value overrides the plain value for that occurrence.
 - `base_color` lets you specify a custom base color for all runs of this line. It must be a hex color in the form `#RRGGBB` or `RRGGBB`. Note: in YAML, `#` starts a comment, so either quote the value (`"#1F77B4"`) or omit the `#` (e.g., `1F77B4`). All runs of the same line share this base color, and each run gets a stable variation (slight hue, saturation, and lightness shifts) for clearer differentiation.
 
 
-Example of per-occurrence extra stop time:
+Example of per-occurrence custom stop time:
 
 ```
 ---
@@ -30,9 +30,9 @@ default_stop_time: 00:00:30
 period: 01:00:00
 runs:
   - 06:00
-extra_stop_times:
+custom_stop_times:
   Meadow: 00:00:30   # applies to all occurrences of Meadow
-  Meadow#2: 00:01:00 # additional extra time for the 2nd occurrence only
+  Meadow#2: 00:01:00 # custom dwell for the 2nd occurrence only (overrides base)
 ---
 Central
 02:00
@@ -49,7 +49,7 @@ East Side
 Central
 ```
 
-In this example, the second time the train stops at Meadow it will dwell for default_stop_time + Meadow (00:00:30) + Meadow#2 (00:01:00).
+In this example, the second time the train stops at Meadow it will dwell for Meadow#2 (00:01:00) because occurrence-specific custom_stop_times override base custom_stop_times, which both replace the default_stop_time.
 
 All durations (e.g. stop times and travel times) are in the format `HH:MM:SS` or `MM:SS`. Time of day (e.g. runs) are in the format `HH:MM:SS` or `HH:MM`.
 

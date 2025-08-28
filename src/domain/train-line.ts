@@ -11,7 +11,7 @@ import { parse as parseYaml } from 'yaml';
  * runs:\n
  *   - HH:MM[:SS]\n
  * stop_location: { Stop: number, ... } OR indented map\n
- * extra_stop_times: { Stop: MM:SS, ... } OR indented map\n
+ * custom_stop_times: { Stop: MM:SS, ... } OR indented map\n
  * ---\n
  * Stop A\n
  * 01:30\n
@@ -50,18 +50,18 @@ export function parseTrainLine(text: string, fileName: string = 'train-line.txt'
   if ((meta.period as number) <= 0) {
     errors.push({ file: fileName, message: '"period" must be > 0' });
   }
-  // Validate extra_stop_times keys exist among stops
+  // Validate custom_stop_times keys exist among stops
   const stopSet = new Set(segments.map((s) => s.stop));
   for (const key of Object.keys(meta.extraStopTimes ?? {})) {
     if (!stopSet.has(key)) {
-      errors.push({ file: fileName, message: `extra_stop_times contains unknown stop "${key}"` });
+      errors.push({ file: fileName, message: `custom_stop_times contains unknown stop "${key}"` });
     }
   }
   // Validate occurrenceExtraStopTimes base stops exist
   if (meta.occurrenceExtraStopTimes) {
     for (const base of Object.keys(meta.occurrenceExtraStopTimes)) {
       if (!stopSet.has(base)) {
-        errors.push({ file: fileName, message: `extra_stop_times contains unknown stop "${base}" (from occurrence-specific key)` });
+        errors.push({ file: fileName, message: `custom_stop_times contains unknown stop "${base}" (from occurrence-specific key)` });
       }
     }
   }
@@ -193,18 +193,18 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     }
   }
 
-  // extra_stop_times
-  const estRaw = obj['extra_stop_times'];
+  // custom_stop_times
+  const estRaw = obj['custom_stop_times'];
   const extraStopTimes: Record<string, TimeSeconds> = {};
   const occurrenceExtraStopTimes: Record<string, Record<number, TimeSeconds>> = {};
   if (estRaw != null) {
     if (typeof estRaw !== 'object' || estRaw == null || Array.isArray(estRaw)) {
-      errors.push({ file: fileName, line: baseLine, message: 'extra_stop_times must be a map' });
+      errors.push({ file: fileName, line: baseLine, message: 'custom_stop_times must be a map' });
     } else {
       for (const [rawKey, v] of Object.entries(estRaw as Record<string, unknown>)) {
         const d = parseDuration(String(v));
         if (!d.ok) {
-          errors.push({ file: fileName, line: baseLine, message: `Invalid extra_stop_times for ${rawKey}: ${d.error}` });
+          errors.push({ file: fileName, line: baseLine, message: `Invalid custom_stop_times for ${rawKey}: ${d.error}` });
           continue;
         }
         const m = String(rawKey).match(/^(.*?)(?:#(\d+))?$/);
@@ -214,7 +214,7 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
           if (idxStr) {
             const idx = Number(idxStr);
             if (!Number.isInteger(idx) || idx <= 0) {
-              errors.push({ file: fileName, line: baseLine, message: `extra_stop_times key "${rawKey}": occurrence index must be a positive integer` });
+              errors.push({ file: fileName, line: baseLine, message: `custom_stop_times key "${rawKey}": occurrence index must be a positive integer` });
             } else {
               if (!occurrenceExtraStopTimes[base]) occurrenceExtraStopTimes[base] = {};
               occurrenceExtraStopTimes[base][idx] = d.value;

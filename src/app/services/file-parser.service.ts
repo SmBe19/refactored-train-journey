@@ -95,7 +95,7 @@ export class FileParserService {
     return errs;
   });
 
-  // Non-fatal warnings: redundant extra_stop_times entries (zero durations)
+  // Non-fatal warnings: redundant custom_stop_times entries (zero durations)
   readonly extraStopTimesWarnings = computed<ParseError[]>(() => {
     const warns: ParseError[] = [];
     for (const { fileName, spec } of this.parsedTrainLines()) {
@@ -105,7 +105,7 @@ export class FileParserService {
         if (seconds === 0) {
           warns.push({
             file: fileName,
-            message: `Warning: extra_stop_times for stop "${stop}" is 0s and has no effect`,
+            message: `Warning: custom_stop_times for stop "${stop}" is 0s`,
           });
         }
       }
@@ -117,7 +117,7 @@ export class FileParserService {
           if (seconds === 0) {
             warns.push({
               file: fileName,
-              message: `Warning: extra_stop_times for stop "${stop}#${idxStr}" is 0s and has no effect`,
+              message: `Warning: custom_stop_times for stop "${stop}#${idxStr}" is 0s`,
             });
           }
         }
@@ -137,9 +137,9 @@ export class FileParserService {
       segments.forEach((seg, idx) => {
         const occ = (occurrence.get(seg.stop) ?? 0) + 1;
         occurrence.set(seg.stop, occ);
-        const baseExtra = (meta.extraStopTimes[seg.stop] ?? (0 as unknown as number)) as number;
-        const occExtra = (meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ] ?? (0 as unknown as number)) as number;
-        const dwell = idx === 0 ? 0 : ((meta.defaultStopTime as unknown as number) + baseExtra + occExtra);
+        const occCustom = meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ] as unknown as number | undefined;
+        const baseCustom = meta.extraStopTimes[seg.stop] as unknown as number | undefined;
+        const dwell = idx === 0 ? 0 : ((occCustom ?? baseCustom ?? (meta.defaultStopTime as unknown as number)));
         const travel = (seg.travelToNext as unknown as number) || 0;
         total += dwell + travel;
       });

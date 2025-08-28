@@ -45,7 +45,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
         </section>
 
         <p class="help-examples__more">
-          See the README for full format details, optional fields like <code>extra_stop_times</code>, <code>repeat_runs</code>, and <code>base_color</code>, and more examples.
+          See the README for full format details, optional fields like <code>custom_stop_times</code>, <code>repeat_runs</code>, and <code>base_color</code>, and more examples.
         </p>
       </div>
     }
@@ -79,7 +79,7 @@ runs:
   - 06:30
 repeat_runs: 1  # repeats each run once more at start+period
 base_color: 1F77B4
-extra_stop_times:
+custom_stop_times:
   Meadow: 00:00:30
   Meadow#2: 00:01:00
 ---

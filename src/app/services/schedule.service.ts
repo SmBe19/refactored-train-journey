@@ -74,10 +74,12 @@ function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
       // Track 1-based occurrence index for this stop along the line
       const occ = (occurrence.get(seg.stop) ?? 0) + 1;
       occurrence.set(seg.stop, occ);
-      // No dwell at the initial stop; ignore extra_stop_times for the first stop
-      const occExtra = meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ] ?? (0 as unknown as TimeSeconds);
-      const baseExtra = meta.extraStopTimes[seg.stop] ?? (0 as unknown as TimeSeconds);
-      const dwell = idx === 0 ? (0 as TimeSeconds) : add(meta.defaultStopTime, add(baseExtra, occExtra));
+      // No dwell at the initial stop; ignore custom_stop_times for the first stop
+      const occCustom = meta.occurrenceExtraStopTimes?.[seg.stop]?.[occ];
+      const baseCustom = meta.extraStopTimes[seg.stop];
+      const dwell = idx === 0
+        ? (0 as TimeSeconds)
+        : (occCustom ?? baseCustom ?? meta.defaultStopTime);
       const departure = add(arrival, dwell);
 
       // Advance time to next stop by travel time

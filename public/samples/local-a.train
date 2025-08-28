@@ -7,7 +7,7 @@ runs:
   - 06:30
 repeat_runs: 1
 base_color: 1F77B4
-extra_stop_times:
+custom_stop_times:
   Meadow: 00:00:30
   Meadow#2: 00:01:00
 ---
