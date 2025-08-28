@@ -152,9 +152,9 @@ import { TimeWindow, TimeWindowService } from '../services/time-window.service';
       @if (hoverActive()) {
         <g class="tooltip" [attr.transform]="'translate(' + hoverX() + ',' + hoverY() + ')'">
           <circle r="3" fill="#000"/>
-          <rect x="6" y="-22" rx="3" ry="3" width="160" height="40" fill="rgba(255,255,255,0.9)" stroke="#999"/>
-          <text x="12" y="-6" font-size="10" fill="#111">{{ hoverTextLine1() }}</text>
-          <text x="12" y="8" font-size="10" fill="#444">{{ hoverTextLine2() }}</text>
+          <rect [attr.x]="tooltipRectX()" y="-22" rx="3" ry="3" width="160" height="40" fill="rgba(255,255,255,0.9)" stroke="#999"/>
+          <text [attr.x]="tooltipTextX()" y="-6" font-size="10" fill="#111">{{ hoverTextLine1() }}</text>
+          <text [attr.x]="tooltipTextX()" y="8" font-size="10" fill="#444">{{ hoverTextLine2() }}</text>
         </g>
       }
     </svg>
@@ -203,6 +203,17 @@ export class GraphCanvasComponent {
   protected readonly hoverY = signal(0);
   protected readonly hoverTextLine1 = signal('');
   protected readonly hoverTextLine2 = signal('');
+
+  // Tooltip layout and flipping logic: flip to the left if too close to right border
+  private readonly tooltipWidth = 160;
+  private readonly tooltipPadX = 6; // space between point and tooltip box
+  protected readonly hoverFlipLeft = computed<boolean>(() => {
+    const x = this.hoverX();
+    const rightLimit = this.width - this.margin.right;
+    return x + this.tooltipPadX + this.tooltipWidth > rightLimit;
+  });
+  protected readonly tooltipRectX = computed<number>(() => this.hoverFlipLeft() ? -(this.tooltipWidth + this.tooltipPadX) : this.tooltipPadX);
+  protected readonly tooltipTextX = computed<number>(() => this.hoverFlipLeft() ? -this.tooltipWidth : (this.tooltipPadX + 6));
 
   // Drag state
   protected readonly dragging = signal(false);
