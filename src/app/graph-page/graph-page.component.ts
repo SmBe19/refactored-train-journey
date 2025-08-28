@@ -20,8 +20,8 @@ import { HelpExamplesComponent } from '../help-examples/help-examples.component'
         <!-- Left pane: inputs, messages, legend -->
         <aside class="split__left" [style.width.px]="leftWidth()" role="region" aria-label="Inputs and messages">
           <header class="graph-page__header">
-            <h2 id="graphPageTitle" class="graph-page__title">Train Graph Viewer</h2>
-            <p class="graph-page__subtitle">Load train lines and a topology to visualize schedules.</p>
+            <h2 id="graphPageTitle" class="graph-page__title">RefactoredTrainJourney</h2>
+            <p class="graph-page__subtitle">Train Graph Viewer</p>
           </header>
           <section class="graph-page__panel" aria-labelledby="loadTitle">
             <h3 id="loadTitle" class="graph-page__panel-title">Load files</h3>
