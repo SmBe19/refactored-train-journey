@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { ScheduleService } from '../services/schedule.service';
 import { TimeWindowService } from '../services/time-window.service';
 import { XWindowService } from '../services/x-window.service';
+import { FileParserService } from '../services/file-parser.service';
 
 @Component({
   selector: 'app-toolbar',
@@ -14,6 +15,13 @@ import { XWindowService } from '../services/x-window.service';
   },
   template: `
     <div class="toolbar__row">
+      <label for="topologySelect" class="toolbar__label">Topology:</label>
+      <select id="topologySelect" class="toolbar__select" [value]="selectedTopology() ?? ''" (change)="onSelectTopology($event)" [disabled]="topologyNames().length === 0" aria-label="Select active topology">
+        @for (name of topologyNames(); track name) {
+          <option [value]="name">{{ name }}</option>
+        }
+      </select>
+      <span class="toolbar__spacer" aria-hidden="true"></span>
       <button type="button" class="toolbar__btn" (click)="exportSvg()">Export SVG</button>
       <button type="button" class="toolbar__btn" (click)="exportPng()">Export PNG</button>
       <button type="button" class="toolbar__btn" (click)="exportJson()">Export JSON</button>
@@ -29,7 +37,9 @@ import { XWindowService } from '../services/x-window.service';
   styles: [
     `
       :host { display: block; margin: .25rem 0 .5rem; }
-      .toolbar__row { display: flex; gap: .5rem; flex-wrap: wrap; }
+      .toolbar__row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+      .toolbar__label { font-weight: 600; }
+      .toolbar__select { padding: .3rem .4rem; border: 1px solid #ccc; border-radius: 4px; }
       .toolbar__btn {
         appearance: none;
         border: 1px solid #0d47a1; /* darker for contrast */
@@ -52,9 +62,12 @@ export class ToolbarComponent {
   private readonly schedule = inject(ScheduleService);
   private readonly timeWindow = inject(TimeWindowService);
   private readonly xWindow = inject(XWindowService);
+  private readonly files = inject(FileParserService);
 
   // cache series as a computed for JSON export
   protected readonly series = computed(() => this.schedule.graphSeries());
+  protected readonly topologyNames = computed(() => this.files.topologyNames());
+  protected readonly selectedTopology = computed(() => this.files.selectedTopology());
 
   exportSvg(): void {
     // Find the first SVG element with class 'graph' (rendered by GraphCanvasComponent)
@@ -134,6 +147,11 @@ export class ToolbarComponent {
     const json = JSON.stringify({ series: data }, null, 2);
     const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
     this.downloadBlob(blob, `train-graph-series-${this.timestamp()}.json`);
+  }
+
+  onSelectTopology(event: Event): void {
+    const name = (event.target as HTMLSelectElement | null)?.value ?? '';
+    this.files.setSelectedTopology(name || null);
   }
 
   private downloadBlob(blob: Blob, filename: string): void {

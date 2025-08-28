@@ -13,7 +13,7 @@ interface UiFile {
   host: {
     class: 'file-drop',
     role: 'region',
-    'aria-label': 'Load train line files and a topology file',
+    'aria-label': 'Load train line files and multiple topology files',
   },
   template: `
     <div class="file-drop__toggle">
@@ -87,57 +87,68 @@ interface UiFile {
     }
 
     <div class="file-drop__row" [hidden]="!showControls()">
-      <label class="file-drop__label" for="topologyInput">Topology file</label>
+      <label class="file-drop__label" for="topologyInput">Topology files</label>
       <input
         id="topologyInput"
         class="file-drop__input"
         type="file"
+        multiple
         accept=".txt,.topo"
         (change)="onTopologyChange($event)"
         aria-describedby="topologyHelp"
       />
       <div id="topologyHelp" class="file-drop__help">
-        Select the topology file (list of stops, one per line). You can also drag and drop it below or paste/edit directly.
+        Select one or more topology files (list of stops, one per line). You can also drag and drop them below and choose the active one.
       </div>
       <div
         class="drop-zone"
         [class.drop-zone--active]="dragActiveTopo()"
         tabindex="0"
         role="group"
-        aria-label="Drop topology file here"
+        aria-label="Drop topology files here"
         (dragover)="onDragOver($event)"
         (dragenter)="onDragEnter($event, 'topo')"
         (dragleave)="onDragLeave($event, 'topo')"
         (drop)="onDropTopology($event)"
       >
-        <p class="drop-zone__text">Drop topology file here</p>
+        <p class="drop-zone__text">Drop topology files here</p>
+      </div>
+      <div class="file-drop__actions">
+        <button type="button" class="btn" (click)="onAddTopology()" aria-label="Add a new topology file">Add topology</button>
       </div>
     </div>
 
-    <div class="file-drop__topo">
-      <div class="file-drop__file-head">
-        <input
-          type="text"
-          class="file-drop__name-input"
-          [value]="topologyFile()?.fileName ?? 'topology.txt'"
-          (input)="onTopologyNameInput($event)"
-          aria-label="Rename topology file"
-        />
-        <button type="button" class="link" (click)="toggleTopoCollapsed()" [attr.aria-expanded]="!topoCollapsed()">
-          {{ topoCollapsed() ? 'Expand' : 'Collapse' }}
-        </button>
-        <button type="button" class="link" (click)="onClearTopology()" aria-label="Clear topology">Clear</button>
-      </div>
-      @if (!topoCollapsed()) {
-        <textarea
-          class="file-drop__textarea"
-          [value]="topologyFile()?.text ?? ''"
-          (input)="onTopologyTextInput($event)"
-          rows="6"
-          aria-label="Edit topology contents"
-        ></textarea>
-      }
-    </div>
+    @if (topologyFiles().length > 0) {
+      <ul class="file-drop__list" role="list" aria-label="Topology files">
+        @for (f of topologyFiles(); track f.fileName; let i = $index) {
+          <li class="file-drop__item">
+            <div class="file-drop__file-head">
+              <input type="radio" name="active-topology" [value]="f.fileName" [checked]="selectedTopologyName() === f.fileName" (change)="onSelectTopology(f.fileName)" aria-label="Set {{ f.fileName }} as active topology" />
+              <input
+                type="text"
+                class="file-drop__name-input"
+                [value]="f.fileName"
+                (input)="onTopologyNameInput(i, $event)"
+                aria-label="Rename topology file {{ f.fileName }}"
+              />
+              <button type="button" class="link" (click)="toggleTopoCollapsed(i)" [attr.aria-expanded]="!isTopoCollapsed(i)">
+                {{ isTopoCollapsed(i) ? 'Expand' : 'Collapse' }}
+              </button>
+              <button type="button" class="link" (click)="onRemoveTopology(i)" aria-label="Remove {{ f.fileName }}">Remove</button>
+            </div>
+            @if (!isTopoCollapsed(i)) {
+              <textarea
+                class="file-drop__textarea"
+                [value]="f.text"
+                (input)="onTopologyTextInput(i, $event)"
+                rows="6"
+                aria-label="Edit topology contents for {{ f.fileName }}"
+              ></textarea>
+            }
+          </li>
+        }
+      </ul>
+    }
   `,
   styles: [
     `
@@ -180,7 +191,8 @@ export class FileDropComponent {
   private readonly parser = inject(FileParserService);
 
   protected readonly trainFiles: WritableSignal<UiFile[]> = signal<UiFile[]>([]);
-  protected readonly topologyFile: WritableSignal<UiFile | null> = signal<UiFile | null>(null);
+  protected readonly topologyFiles: WritableSignal<UiFile[]> = signal<UiFile[]>([]);
+  protected readonly selectedTopologyName = signal<string | null>(null);
 
   // local UI state for drag highlight
   protected readonly dragActiveTrain = signal(false);
@@ -189,7 +201,7 @@ export class FileDropComponent {
   // UI: collapse controls and individual files
   protected readonly showControls = signal(false); // collapsed by default
   private readonly collapsedTrains = signal<Set<number>>(new Set());
-  protected readonly topoCollapsed = signal<boolean>(true);
+  private readonly collapsedTopos = signal<Set<number>>(new Set());
 
   protected toggleControls(): void {
     this.showControls.update((v) => !v);
@@ -208,8 +220,17 @@ export class FileDropComponent {
     });
   }
 
-  protected toggleTopoCollapsed(): void {
-    this.topoCollapsed.update((v) => !v);
+  protected isTopoCollapsed(index: number): boolean {
+    return this.collapsedTopos().has(index);
+  }
+
+  protected toggleTopoCollapsed(index: number): void {
+    this.collapsedTopos.update((s) => {
+      const next = new Set(s);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   }
 
   private static readonly STORE_KEY = 'train-graph-viewer:v1';
@@ -221,7 +242,7 @@ export class FileDropComponent {
     try {
       const raw = localStorage.getItem(FileDropComponent.STORE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as { trainFiles?: UiFile[]; topologyFile?: UiFile | null };
+        const parsed = JSON.parse(raw) as { trainFiles?: UiFile[]; topologyFile?: UiFile | null; topologyFiles?: UiFile[]; selectedTopologyName?: string | null };
         if (Array.isArray(parsed.trainFiles)) {
           // validate shape minimally and strip legacy 'pasted-' prefix from names
           this.trainFiles.set(
@@ -232,9 +253,17 @@ export class FileDropComponent {
             })
           );
         }
-        if (parsed.topologyFile && typeof parsed.topologyFile.fileName === 'string' && typeof parsed.topologyFile.text === 'string') {
+        if (Array.isArray(parsed.topologyFiles)) {
+          const files = parsed.topologyFiles.map((f) => ({ fileName: String((f as any).fileName ?? 'topology.txt').replace(/^pasted-/, ''), text: String((f as any).text ?? '') }));
+          this.topologyFiles.set(files);
+        } else if (parsed.topologyFile && typeof parsed.topologyFile.fileName === 'string' && typeof parsed.topologyFile.text === 'string') {
           const topoName = parsed.topologyFile.fileName.replace(/^pasted-/, '');
-          this.topologyFile.set({ fileName: topoName, text: parsed.topologyFile.text });
+          this.topologyFiles.set([{ fileName: topoName, text: parsed.topologyFile.text }]);
+        }
+        if (parsed.selectedTopologyName) {
+          this.selectedTopologyName.set(parsed.selectedTopologyName);
+        } else if (this.topologyFiles().length > 0) {
+          this.selectedTopologyName.set(this.topologyFiles()[0].fileName);
         }
       }
     } catch {
@@ -246,7 +275,7 @@ export class FileDropComponent {
 
   private persist(): void {
     try {
-      const payload = JSON.stringify({ trainFiles: this.trainFiles(), topologyFile: this.topologyFile() });
+      const payload = JSON.stringify({ trainFiles: this.trainFiles(), topologyFiles: this.topologyFiles(), selectedTopologyName: this.selectedTopologyName() });
       localStorage.setItem(FileDropComponent.STORE_KEY, payload);
     } catch {
       // Swallow storage quota or serialization errors
@@ -256,7 +285,8 @@ export class FileDropComponent {
   private updateService(): void {
     this.parser.setInputs({
       trainLineFiles: this.trainFiles().map((f) => ({ fileName: f.fileName, text: f.text })),
-      topologyFile: this.topologyFile() ? { fileName: this.topologyFile()!.fileName, text: this.topologyFile()!.text } : undefined,
+      topologyFiles: this.topologyFiles().map((f) => ({ fileName: f.fileName, text: f.text })),
+      selectedTopologyName: this.selectedTopologyName(),
     });
     this.persist();
   }
@@ -269,13 +299,8 @@ export class FileDropComponent {
 
   async onTopologyChange(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const file = input.files && input.files[0];
-    if (!file) {
-      this.topologyFile.set(null);
-      this.updateService();
-      return;
-    }
-    await this.readAndSetTopology(file);
+    const files = Array.from(input.files ?? []);
+    await this.readAndAddTopologies(files);
   }
 
   onDragOver(ev: DragEvent): void {
@@ -308,15 +333,23 @@ export class FileDropComponent {
     this.dragActiveTopo.set(false);
     const dt = ev.dataTransfer;
     if (!dt) return;
-    const file = (dt.files && dt.files[0]) ?? null;
-    if (!file) return;
-    await this.readAndSetTopology(file);
+    const files = Array.from(dt.files ?? []);
+    if (files.length === 0) return;
+    await this.readAndAddTopologies(files);
   }
 
   onAddPastedTrain(): void {
     const count = this.trainFiles().length + 1;
     const newFile: UiFile = { fileName: `train-${count}.txt`, text: '' };
     this.trainFiles.update((arr) => [...arr, newFile]);
+    this.updateService();
+  }
+
+  onAddTopology(): void {
+    const count = this.topologyFiles().length + 1;
+    const newFile: UiFile = { fileName: `topology-${count}.txt`, text: '' };
+    this.topologyFiles.update(arr => [...arr, newFile]);
+    this.selectedTopologyName.set(newFile.fileName);
     this.updateService();
   }
 
@@ -336,7 +369,8 @@ export class FileDropComponent {
 
       const loadedTrains = await Promise.all(trainFetches);
       this.trainFiles.set(loadedTrains);
-      this.topologyFile.set({ fileName: 'topology.txt', text: topoText });
+      this.topologyFiles.set([{ fileName: 'topology.txt', text: topoText }]);
+      this.selectedTopologyName.set('topology.txt');
       this.updateService();
     } catch {
       // ignore fetch errors for now
@@ -369,31 +403,49 @@ export class FileDropComponent {
     this.onTrainNameChange(index, value);
   }
 
-  onTopologyTextChange(value: string): void {
-    const fileName = this.topologyFile()?.fileName ?? 'topology.txt';
-    this.topologyFile.set({ fileName, text: value });
+  onSelectTopology(name: string): void {
+    this.selectedTopologyName.set(name);
     this.updateService();
   }
 
-  onTopologyTextInput(event: Event): void {
+  onRemoveTopology(index: number): void {
+    const removedName = this.topologyFiles()[index]?.fileName ?? null;
+    this.topologyFiles.update(arr => arr.filter((_, i) => i !== index));
+    if (this.selectedTopologyName() === removedName) {
+      const arr = this.topologyFiles();
+      this.selectedTopologyName.set(arr.length > 0 ? arr[0].fileName : null);
+    }
+    this.updateService();
+  }
+
+  onTopologyTextChange(index: number, value: string): void {
+    this.topologyFiles.update(arr => arr.map((f, i) => i === index ? { ...f, text: value } : f));
+    this.updateService();
+  }
+
+  onTopologyTextInput(index: number, event: Event): void {
     const value = (event.target as HTMLTextAreaElement | null)?.value ?? '';
-    this.onTopologyTextChange(value);
+    this.onTopologyTextChange(index, value);
   }
 
-  onTopologyNameChange(value: string): void {
-    const name = value.trim() || 'topology.txt';
-    const current = this.topologyFile();
-    this.topologyFile.set({ fileName: name, text: current?.text ?? '' });
+  onTopologyNameChange(index: number, value: string): void {
+    const name = (value.trim() || `topology-${index + 1}.txt`);
+    const prevName = this.topologyFiles()[index]?.fileName ?? null;
+    this.topologyFiles.update(arr => arr.map((f, i) => i === index ? { ...f, fileName: name } : f));
+    if (this.selectedTopologyName() === prevName) {
+      this.selectedTopologyName.set(name);
+    }
     this.updateService();
   }
 
-  onTopologyNameInput(event: Event): void {
+  onTopologyNameInput(index: number, event: Event): void {
     const value = (event.target as HTMLInputElement | null)?.value ?? '';
-    this.onTopologyNameChange(value);
+    this.onTopologyNameChange(index, value);
   }
 
   onClearTopology(): void {
-    this.topologyFile.set({ fileName: 'topology.txt', text: '' });
+    this.topologyFiles.set([]);
+    this.selectedTopologyName.set(null);
     this.updateService();
   }
 
@@ -404,9 +456,17 @@ export class FileDropComponent {
     this.updateService();
   }
 
-  private async readAndSetTopology(file: File): Promise<void> {
-    const text = await file.text();
-    this.topologyFile.set({ fileName: file.name, text });
+  private async readAndAddTopologies(files: File[]): Promise<void> {
+    const read = await Promise.all(files.map(async f => ({ fileName: f.name, text: await f.text() })));
+    const existing = this.topologyFiles();
+    // Merge by fileName (replace if same name)
+    const map = new Map<string, UiFile>(existing.map(f => [f.fileName, f] as const));
+    for (const f of read) map.set(f.fileName, f);
+    const merged = Array.from(map.values());
+    this.topologyFiles.set(merged);
+    if (!this.selectedTopologyName() && merged.length > 0) {
+      this.selectedTopologyName.set(merged[0].fileName);
+    }
     this.updateService();
   }
 }

@@ -10,14 +10,24 @@ export interface ParsedTrainLine {
 
 export interface FileInputs {
   trainLineFiles: { fileName: string; text: string }[];
+  // Backward compatibility: accept single topologyFile
   topologyFile?: { fileName: string; text: string };
+  // New: multiple topology files and optional selected topology by name
+  topologyFiles?: { fileName: string; text: string }[];
+  selectedTopologyName?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class FileParserService {
   // Raw inputs state
   private readonly trainLineTexts = signal<{ fileName: string; text: string }[]>([]);
-  private readonly topologyText = signal<{ fileName: string; text: string } | null>(null);
+  // Support multiple topology files; maintain a selection by name
+  private readonly topologyTexts = signal<{ fileName: string; text: string }[]>([]);
+  private readonly selectedTopologyName = signal<string | null>(null);
+
+  // Expose topology names and selection for UI
+  readonly topologyNames = computed<string[]>(() => this.topologyTexts().map(f => f.fileName));
+  readonly selectedTopology = computed<string | null>(() => this.selectedTopologyName());
 
   // Parsed outputs
   readonly parsedTrainLines = computed<ParsedTrainLine[]>(() => {
@@ -43,9 +53,11 @@ export class FileParserService {
   });
 
   readonly parsedTopology = computed<Result<Topology, ParseError[]> | null>(() => {
-    const top = this.topologyText();
-    if (!top) return null;
-    return parseTopology(top.text, top.fileName);
+    const files = this.topologyTexts();
+    if (files.length === 0) return null;
+    const sel = this.selectedTopologyName();
+    const chosen = sel ? files.find(f => f.fileName === sel) ?? files[0] : files[0];
+    return parseTopology(chosen.text, chosen.fileName);
   });
 
   readonly topologyErrors = computed<ParseError[]>(() => {
@@ -69,8 +81,10 @@ export class FileParserService {
 
     for (const stop of topoStops) {
       if (!unionStops.has(stop)) {
-        // Attach the topology file name if available
-        const top = this.topologyText();
+        // Attach the topology file name if available (use selected or first)
+        const files = this.topologyTexts();
+        const sel = this.selectedTopologyName();
+        const top = sel ? files.find(f => f.fileName === sel) ?? files[0] : files[0];
         errs.push({
           file: top?.fileName ?? 'topology.txt',
           message: `Topology stop "${stop}" does not exist in any loaded train line`,
@@ -170,12 +184,44 @@ export class FileParserService {
     this.trainLineTexts.set([...files]);
   }
 
+  // New API: set multiple topology files and manage selected
+  setTopologyFiles(files: { fileName: string; text: string }[]): void {
+    const arr = [...files];
+    this.topologyTexts.set(arr);
+    // Keep selection if it still exists; otherwise select first or null
+    const sel = this.selectedTopologyName();
+    if (!sel || !arr.find(f => f.fileName === sel)) {
+      this.selectedTopologyName.set(arr.length > 0 ? arr[0].fileName : null);
+    }
+  }
+
+  setSelectedTopology(name: string | null): void {
+    const arr = this.topologyTexts();
+    if (name && arr.find(f => f.fileName === name)) {
+      this.selectedTopologyName.set(name);
+    } else if (arr.length > 0) {
+      this.selectedTopologyName.set(arr[0].fileName);
+    } else {
+      this.selectedTopologyName.set(null);
+    }
+  }
+
+  // Back-compat single-file setter: maps to multi
   setTopologyFile(file: { fileName: string; text: string } | null): void {
-    this.topologyText.set(file);
+    if (file) {
+      this.setTopologyFiles([file]);
+    } else {
+      this.setTopologyFiles([]);
+    }
   }
 
   setInputs(inputs: FileInputs): void {
     this.setTrainLineFiles(inputs.trainLineFiles);
-    this.setTopologyFile(inputs.topologyFile ?? null);
+    if (Array.isArray(inputs.topologyFiles)) {
+      this.setTopologyFiles(inputs.topologyFiles);
+      if (inputs.selectedTopologyName !== undefined) this.setSelectedTopology(inputs.selectedTopologyName);
+    } else {
+      this.setTopologyFile(inputs.topologyFile ?? null);
+    }
   }
 }
