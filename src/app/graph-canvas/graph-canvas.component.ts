@@ -307,6 +307,9 @@ export class GraphCanvasComponent {
   }
 
   onKeydown(ev: KeyboardEvent): void {
+    // Ignore keyboard shortcuts when focus is in an editable element (e.g., textarea, input, contenteditable)
+    if (this.isFromEditable(ev)) return;
+
     // Enable keyboard pan/zoom of the time window
     const key = ev.key;
     const ctrlOrMeta = ev.ctrlKey || ev.metaKey;
@@ -341,6 +344,27 @@ export class GraphCanvasComponent {
       ev.preventDefault();
       return;
     }
+  }
+
+  // Return true if the keyboard event originated from an editable control where typing should not trigger graph shortcuts
+  private isFromEditable(ev: KeyboardEvent): boolean {
+    const target = ev.target as EventTarget | null;
+    if (!target) return false;
+    // If the active element is editable, respect it regardless of event target
+    const active = (typeof document !== 'undefined') ? (document.activeElement as Element | null) : null;
+
+    const isEditableElement = (el: Element | null): boolean => {
+      if (!el) return false;
+      if (el instanceof HTMLInputElement) return true;
+      if (el instanceof HTMLTextAreaElement) return true;
+      if ((el as HTMLElement).isContentEditable) return true;
+      const role = (el as HTMLElement).getAttribute?.('role');
+      if (role === 'textbox') return true;
+      const tag = el.tagName?.toLowerCase();
+      return tag === 'input' || tag === 'textarea';
+    };
+
+    return isEditableElement(target as Element | null) || isEditableElement(active);
   }
 
   private ensureWindow(): void {
