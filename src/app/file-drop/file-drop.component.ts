@@ -16,7 +16,12 @@ interface UiFile {
     'aria-label': 'Load train line files and a topology file',
   },
   template: `
-    <div class="file-drop__row">
+    <div class="file-drop__toggle">
+      <button type="button" class="btn" (click)="toggleControls()" [attr.aria-expanded]="showControls()">
+        {{ showControls() ? 'Hide upload controls' : 'Show upload controls' }}
+      </button>
+    </div>
+    <div class="file-drop__row" [hidden]="!showControls()">
       <label class="file-drop__label" for="trainLineInput">Train line files</label>
       <input
         id="trainLineInput"
@@ -48,16 +53,26 @@ interface UiFile {
         <button type="button" class="btn" (click)="onAddPastedTrain()">Add train line</button>
         <button type="button" class="btn" (click)="onLoadSamples()" aria-label="Load sample files">Load sample files</button>
       </div>
+    </div>
 
-      @if (trainFiles().length > 0) {
-        <ul class="file-drop__list" role="list" aria-label="Selected or pasted train line files">
-          @for (f of trainFiles(); track f.fileName; let i = $index) {
-            <li class="file-drop__item">
-              <div class="file-drop__file-head">
-                <span class="file-drop__name">{{ f.fileName }}</span>
-                <span class="file-drop__type" aria-hidden="true">Train line</span>
-                <button type="button" class="link" (click)="onRemoveTrain(i)" aria-label="Remove {{ f.fileName }}">Remove</button>
-              </div>
+    @if (trainFiles().length > 0) {
+      <ul class="file-drop__list" role="list" aria-label="Selected or pasted train line files">
+        @for (f of trainFiles(); track f.fileName; let i = $index) {
+          <li class="file-drop__item">
+            <div class="file-drop__file-head">
+              <input
+                type="text"
+                class="file-drop__name-input"
+                [value]="f.fileName"
+                (input)="onTrainNameInput(i, $event)"
+                aria-label="Rename file {{ f.fileName }}"
+              />
+              <button type="button" class="link" (click)="toggleTrainCollapsed(i)" [attr.aria-expanded]="!isTrainCollapsed(i)">
+                {{ isTrainCollapsed(i) ? 'Expand' : 'Collapse' }}
+              </button>
+              <button type="button" class="link" (click)="onRemoveTrain(i)" aria-label="Remove {{ f.fileName }}">Remove</button>
+            </div>
+            @if (!isTrainCollapsed(i)) {
               <textarea
                 class="file-drop__textarea"
                 [value]="f.text"
@@ -65,13 +80,13 @@ interface UiFile {
                 rows="6"
                 aria-label="Edit contents of {{ f.fileName }}"
               ></textarea>
-            </li>
-          }
-        </ul>
-      }
-    </div>
+            }
+          </li>
+        }
+      </ul>
+    }
 
-    <div class="file-drop__row">
+    <div class="file-drop__row" [hidden]="!showControls()">
       <label class="file-drop__label" for="topologyInput">Topology file</label>
       <input
         id="topologyInput"
@@ -97,13 +112,23 @@ interface UiFile {
       >
         <p class="drop-zone__text">Drop topology file here</p>
       </div>
+    </div>
 
-      <div class="file-drop__topo">
-        <div class="file-drop__file-head">
-          <span class="file-drop__name">{{ topologyFile()?.fileName ?? 'topology.txt' }}</span>
-          <span class="file-drop__type" aria-hidden="true">Topology</span>
-          <button type="button" class="link" (click)="onClearTopology()" aria-label="Clear topology">Clear</button>
-        </div>
+    <div class="file-drop__topo">
+      <div class="file-drop__file-head">
+        <input
+          type="text"
+          class="file-drop__name-input"
+          [value]="topologyFile()?.fileName ?? 'topology.txt'"
+          (input)="onTopologyNameInput($event)"
+          aria-label="Rename topology file"
+        />
+        <button type="button" class="link" (click)="toggleTopoCollapsed()" [attr.aria-expanded]="!topoCollapsed()">
+          {{ topoCollapsed() ? 'Expand' : 'Collapse' }}
+        </button>
+        <button type="button" class="link" (click)="onClearTopology()" aria-label="Clear topology">Clear</button>
+      </div>
+      @if (!topoCollapsed()) {
         <textarea
           class="file-drop__textarea"
           [value]="topologyFile()?.text ?? ''"
@@ -111,7 +136,7 @@ interface UiFile {
           rows="6"
           aria-label="Edit topology contents"
         ></textarea>
-      </div>
+      }
     </div>
   `,
   styles: [
@@ -138,6 +163,9 @@ interface UiFile {
       .file-drop__item { margin-bottom: .5rem; }
       .file-drop__file-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; }
       .file-drop__name { font-weight: 700; color: #111; }
+      .file-drop__name-input { font-weight: 700; color: #111; border: 1px solid #ccc; border-radius: 4px; padding: .15rem .35rem; min-width: 140px; }
+      .file-drop__name-input:focus-visible { outline: 3px solid #ffab00; outline-offset: 2px; }
+      .file-drop__toggle { display: flex; justify-content: flex-start; margin-bottom: .5rem; }
       .file-drop__type { font-size: .75rem; color: #0d47a1; background: #e3f2fd; border: 1px solid #90caf9; padding: 0 .25rem; border-radius: 3px; }
       .file-drop__single { margin-top: .25rem; }
       .file-drop__textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
@@ -157,6 +185,32 @@ export class FileDropComponent {
   // local UI state for drag highlight
   protected readonly dragActiveTrain = signal(false);
   protected readonly dragActiveTopo = signal(false);
+
+  // UI: collapse controls and individual files
+  protected readonly showControls = signal(false); // collapsed by default
+  private readonly collapsedTrains = signal<Set<number>>(new Set());
+  protected readonly topoCollapsed = signal<boolean>(true);
+
+  protected toggleControls(): void {
+    this.showControls.update((v) => !v);
+  }
+
+  protected isTrainCollapsed(index: number): boolean {
+    return this.collapsedTrains().has(index);
+  }
+
+  protected toggleTrainCollapsed(index: number): void {
+    this.collapsedTrains.update((s) => {
+      const next = new Set(s);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  protected toggleTopoCollapsed(): void {
+    this.topoCollapsed.update((v) => !v);
+  }
 
   private static readonly STORE_KEY = 'train-graph-viewer:v1';
   private static readonly SAMPLE_LINES = ['/samples/local-a.train', '/samples/express-b.train'] as const;
@@ -304,6 +358,17 @@ export class FileDropComponent {
     this.onTrainTextChange(index, value);
   }
 
+  onTrainNameChange(index: number, value: string): void {
+    const nextName = value.trim() || `train-${index + 1}.txt`;
+    this.trainFiles.update((arr) => arr.map((f, i) => (i === index ? { ...f, fileName: nextName } : f)));
+    this.updateService();
+  }
+
+  onTrainNameInput(index: number, event: Event): void {
+    const value = (event.target as HTMLInputElement | null)?.value ?? '';
+    this.onTrainNameChange(index, value);
+  }
+
   onTopologyTextChange(value: string): void {
     const fileName = this.topologyFile()?.fileName ?? 'topology.txt';
     this.topologyFile.set({ fileName, text: value });
@@ -313,6 +378,18 @@ export class FileDropComponent {
   onTopologyTextInput(event: Event): void {
     const value = (event.target as HTMLTextAreaElement | null)?.value ?? '';
     this.onTopologyTextChange(value);
+  }
+
+  onTopologyNameChange(value: string): void {
+    const name = value.trim() || 'topology.txt';
+    const current = this.topologyFile();
+    this.topologyFile.set({ fileName: name, text: current?.text ?? '' });
+    this.updateService();
+  }
+
+  onTopologyNameInput(event: Event): void {
+    const value = (event.target as HTMLInputElement | null)?.value ?? '';
+    this.onTopologyNameChange(value);
   }
 
   onClearTopology(): void {
