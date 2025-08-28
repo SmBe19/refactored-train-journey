@@ -18,13 +18,12 @@ import { XWindowService } from '../services/x-window.service';
       <button type="button" class="toolbar__btn" (click)="exportPng()">Export PNG</button>
       <button type="button" class="toolbar__btn" (click)="exportJson()">Export JSON</button>
       <span class="toolbar__spacer" aria-hidden="true"></span>
-      <button type="button" class="toolbar__btn" (click)="fitToData()" title="Fit time range to data">Fit</button>
-      <button type="button" class="toolbar__btn" (click)="zoomIn()" title="Zoom in (time)">Zoom In</button>
-      <button type="button" class="toolbar__btn" (click)="zoomOut()" title="Zoom out (time)">Zoom Out</button>
       <button type="button" class="toolbar__btn" (click)="resetView()" title="Clear time range selection">Reset</button>
-      <span class="toolbar__spacer" aria-hidden="true"></span>
-      <button type="button" class="toolbar__btn" (click)="zoomInX()" title="Zoom in (horizontal)">Zoom In X</button>
-      <button type="button" class="toolbar__btn" (click)="zoomOutX()" title="Zoom out (horizontal)">Zoom Out X</button>
+      <button type="button" class="toolbar__btn" (click)="fitToData()" title="Fit time range to data">Fit</button>
+      <button type="button" class="toolbar__btn" (click)="zoomIn()" title="Zoom in (time)">+ Y</button>
+      <button type="button" class="toolbar__btn" (click)="zoomOut()" title="Zoom out (time)">- Y</button>
+      <button type="button" class="toolbar__btn" (click)="zoomInX()" title="Zoom in (horizontal)">+ X</button>
+      <button type="button" class="toolbar__btn" (click)="zoomOutX()" title="Zoom out (horizontal)">- X</button>
     </div>
   `,
   styles: [
@@ -162,17 +161,22 @@ export class ToolbarComponent {
   // ---- Time window controls ----
   fitToData(): void {
     const series = this.series();
-    let min = Number.POSITIVE_INFINITY;
-    let max = Number.NEGATIVE_INFINITY;
+    let tmin = Number.POSITIVE_INFINITY;
+    let tmax = Number.NEGATIVE_INFINITY;
     for (const s of series) {
       for (const p of s.points) {
         const t = p.time as unknown as number;
-        if (t < min) min = t;
-        if (t > max) max = t;
+        if (t < tmin) tmin = t;
+        if (t > tmax) tmax = t;
       }
     }
-    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
-      this.timeWindow.setWindow({ min, max });
+    if (Number.isFinite(tmin) && Number.isFinite(tmax) && tmax > tmin) {
+      this.timeWindow.setWindow({ min: tmin, max: tmax });
+    }
+    // Also fit horizontal (X) window to data domain
+    const [xmin, xmax] = this.xAutoDomain();
+    if (Number.isFinite(xmin) && Number.isFinite(xmax) && xmax > xmin) {
+      this.xWindow.setWindow({ min: xmin, max: xmax });
     }
   }
 
@@ -191,7 +195,9 @@ export class ToolbarComponent {
   }
 
   resetView(): void {
+    // Reset both Y (time) and X (distance) windows so the canvas returns to auto-fit on both axes
     this.timeWindow.reset();
+    this.xWindow.reset();
   }
 
   // ---- Horizontal (X) zoom controls ----
