@@ -25,7 +25,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
     @if (open()) {
       <div class="help-examples__content">
         <p class="help-examples__intro">
-          Train line files contain a YAML frontmatter with metadata and a body listing stops and segment travel times. The topology file lists stop names, one per line.
+          Train line files contain a YAML frontmatter with metadata and a body listing stops and segment travel times. The topology file lists stop names, one per line. You can optionally repeat each run using <code>repeat_runs</code>, spaced by the line <code>period</code>.
         </p>
 
         <section class="help-examples__section" aria-labelledby="trainExampleTitle">
@@ -45,7 +45,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
         </section>
 
         <p class="help-examples__more">
-          See the README for full format details, optional fields like extra_stop_times, and more examples.
+          See the README for full format details, optional fields like <code>extra_stop_times</code>, <code>repeat_runs</code>, and <code>base_color</code>, and more examples.
         </p>
       </div>
     }
@@ -77,6 +77,7 @@ period: 01:00:00
 runs:
   - 06:00
   - 06:30
+repeat_runs: 1  # repeats each run once more at start+period
 base_color: 1F77B4
 extra_stop_times:
   Meadow: 00:00:30

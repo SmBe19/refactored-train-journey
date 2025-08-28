@@ -6,7 +6,19 @@ import { GraphPoint, GraphSeries, RunInstance, TimeSeconds, Topology, TrainLineS
  */
 export function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
   const { meta, segments } = spec;
-  return meta.runs.map((runStart) => {
+  // Expand runs by repeats: for each base runStart, add k * period for k=0..repeatRuns
+  const repeat = Math.max(0, Math.floor((meta.repeatRuns ?? 0)));
+  const baseStarts = meta.runs;
+  const expandedStarts = baseStarts.flatMap((s) => {
+    const n = repeat + 1; // include original
+    const per = meta.period as unknown as number;
+    const base = s as unknown as number;
+    const out: number[] = [];
+    for (let k = 0; k < n; k++) out.push(base + k * per);
+    return out.map(asTimeSeconds).map((t) => t as unknown as typeof s);
+  });
+
+  return expandedStarts.map((runStart) => {
     let currentTime: TimeSeconds = runStart as unknown as TimeSeconds; // runStart is TimeOfDaySeconds branded; timeline is compatible in seconds
 
     const occurrence = new Map<string, number>();

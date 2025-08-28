@@ -15,6 +15,11 @@ export interface TrainLineMeta {
   defaultStopTime: TimeSeconds;
   period: TimeSeconds;
   runs: TimeOfDaySeconds[];
+  /**
+   * Number of additional repetitions for each run, spaced by `period`.
+   * Example: repeatRuns = 2 means each listed run occurs 3 times total (original + 2 repeats).
+   */
+  repeatRuns?: number;
   // Optional custom base color for this line in #RRGGBB format
   baseColor?: string;
   // Generic extra dwell time applied to all occurrences of a stop

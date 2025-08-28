@@ -157,6 +157,18 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     }
   }
 
+  // repeat_runs (optional)
+  let repeatRuns: number | undefined;
+  const repeatRaw = (obj['repeat_runs'] ?? obj['repeatRuns']);
+  if (repeatRaw != null) {
+    const n = Number(repeatRaw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      errors.push({ file: fileName, line: baseLine, message: `repeat_runs must be a non-negative integer` });
+    } else {
+      repeatRuns = n;
+    }
+  }
+
   // base_color (optional)
   let baseColor: string | undefined;
   const baseColorRaw = obj['base_color'] ?? obj['baseColor']; // accept both snake_case and camelCase
@@ -230,6 +242,7 @@ function parseFrontmatter(yamlText: string, fileName: string, baseLine: number):
     defaultStopTime,
     period,
     runs,
+    repeatRuns,
     baseColor,
     extraStopTimes,
     occurrenceExtraStopTimes: Object.keys(occurrenceExtraStopTimes).length ? occurrenceExtraStopTimes : undefined,

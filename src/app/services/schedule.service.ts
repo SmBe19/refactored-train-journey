@@ -53,7 +53,18 @@ function computeRunsForLine(spec: TrainLineSpec): RunInstance[] {
   const meta = spec.meta;
   const runs: RunInstance[] = [];
 
-  for (const start of meta.runs) {
+  // Expand run starts by repeatRuns
+  const repeat = Math.max(0, Math.floor((meta.repeatRuns ?? 0)));
+  const starts: number[] = meta.runs.flatMap((s) => {
+    const base = s as unknown as number;
+    const per = meta.period as unknown as number;
+    const out: number[] = [];
+    for (let k = 0; k < repeat + 1; k++) out.push(base + k * per);
+    return out;
+  });
+
+  for (const startNum of starts) {
+    const start = asTimeSeconds(startNum) as unknown as typeof meta.runs[number];
     let t: TimeSeconds = start as unknown as TimeSeconds; // start is branded TimeOfDaySeconds; timeline is consistent in seconds
 
     const occurrence = new Map<string, number>();
